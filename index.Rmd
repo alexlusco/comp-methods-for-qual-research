@@ -25,8 +25,9 @@ date: "`r Sys.Date()`"
 output: 
   distill::distill_article:
     toc: true
+    toc_float: true
     toc_depth: 3
-    code_folding: true
+    code_folding: false
 ---
 
 # Defining the Problem
@@ -44,24 +45,209 @@ output:
 # Parsing, Cleaning, and Exploring
 
 ```{r}
+#install.packages("readr")
 library(readr)
+
+rcmp_news <- read_csv(here::here("rcmp-news-df.csv"))
 ```
 
-```{r}
-rcmp_news <- read_csv(here::here("rcmp-news-final-df-preprocessed.csv"))
-```
-
-Let's take a look at the results our DataFrame so far. For this we can use the ```head``` function from base R to view only the first 6 rows (we don't need to inspect all 13,000 + at this stage).
+Let's take a look at the results our DataFrame so far. For this we can use the `head()` function from base R to view only the first 6 rows of each variable.
 
 ```{r}
+#install.packageS("rmarkdown")
 library(rmarkdown)
 
 paged_table(head(rcmp_news))
 ```
 
-To deal with the issues identified in our desired `province_territory` column, we can write a function that re-labels each of the entries we want to re-label...
+Inspecting the **region** variable, we can see that both the city/town/county and province/territory are grouped together and separated by a ",". For example, on the first row, we have "Iqaluit, Nunavut", and one the second row, we have "Dauphin, Manitoba". As it is going to be useful for our analysis to explore pattern in the data by province/territory, we will want to split the **region** variable so that we have two variables instead, one that contains the town/city/county information, and one that contains the province/territory information. We can achieve this using `separate()` function, which comes from library(tidyr). We will apply the `separate()` function to our region variable, saving the results of our DataFrame (rcmp_news) into a new DataFrame (rcmp_news_pp, where pp stands for "pre-processed"). The `separate()` function requires you to provide the names of the new variables you'll be creating (i.e., what the information on the left and right of the "," will be saved into). We will call these "region1" (town/city/county) and "region2" (province/territory).
 
 ```{r}
+#install.packages("tidyr")
+library(tidyr)
+
+rcmp_news_pp <- rcmp_news %>%
+  separate(region, c("region1", "region2"), sep = ", ")
+
+paged_table(head(rcmp_news_pp, n = 200)) #inspect the results, again using the head() function, but this time let's inspect the first 200 results
+```
+Inspecting the first 200 results, we see that it *mostly* worked, until about page 14. On the second row of page 14, in the **region2** column, we can see that "Ontario Media advisory" has been entered where we expected the result to be just "Ontario". Flipping through more of the pages, we see a similar labeling issue on page 18 ("Ontario NCR", "Guysborough County") and on page 19 ("Manitoba Statement"). At this stage we should ask: how many of the **region2** values contain information other than just the name of the province/territory? The easiest way to do this is to use the `count()` function from library(dplyr) to count the total number of times that each unique entry appears in the **region2** variable. From here we can print the results of our count in a table that we can manually inspect.
+
+```{r}
+#install.packges("dplyr")
+library(dplyr)
+
+rcmp_region_count <- rcmp_news_pp %>%
+  count(region2)
+  
+paged_table(rcmp_region_count)
+```
+Paging through the elements in this table, we can see two problems: 1) there's a lot of entries in the region2 variable that contain more or different information then the name of the province/territory; and 2) on the last page of the table, page 14, we see that there are 24 news releases in our corpus where the **region2** value is *NA*, meaning it is missing. This brings us to our first major cleaning operation: fixing the entries in our **region2** variable so that it only contains information on the province/territory of the RCMP detachment authoring the news release. To deal with this issue, we can write a custom function that re-labels each of the entries we want to re-label in region2. This is not the fastest nor most efficient way to achieve this result, but it is one of the easiest. (As this is a long chunk of code, we have hidden it from view. Click "Show code" to view.)
+
+```{r code_folding=TRUE}
+recode_regions <- function(region) {
+  case_when(
+    region %in% c(
+      "Ontario National",
+      "Ontario Statement",
+      "Ontario Media advisory",
+      "Ontario NCR",
+      "Ontario National Statement",
+      "Ontario National Media advisory",
+      "Ontario National NCR",
+      "Ontario National Statement NCR",
+      "Ontario National Speech",
+      "Ontario Statement NCR",
+      "Ontario Speech",
+      "Ontario Media advisory NCR"
+    ) ~ "Ontario",
+    region %in% c(
+      "Manitoba Statement",
+      "Saskatchewan National Speech",
+      "Saskatchewan National Depot",
+      "Saskatchewan Statement Depot",
+      "Saskatchewan Media advisory",
+      "Saskatchewan Depot",
+      "Saskatchewan Media advisory Depot",
+      "Saskatchewan National",
+      "Saskatchewan National Statement",
+      "Maidstone",
+      "Shaunavon",
+      "Saskatchewan Statement",
+      "Archerwill",
+      "Lake Diefenbaker",
+      "Pelican Narrows",
+      "Moose Jaw",
+      "Weyburn",
+      "Southend",
+      "Emma Lake",
+      "Biggar",
+      "Langenburg"
+    ) ~ "Saskatchewan",
+    region %in% c(
+      "Quebec National Media advisory",
+      "Quebec National",
+      "Quebec Media advisory"
+    ) ~ "Quebec",
+    region %in% c(
+      "Nova Scotia Media advisory",
+      "Nova Scotia National",
+      "Halifax Regional Municipality",
+      "Nova Scotia Speech",
+      "Nova Scotia Statement",
+      "Nova Scotia National Speech",
+      "Queens and Kings Counties",
+      "Victoria County",
+      "Digby County",
+      "Hants County",
+      "Kings County",
+      "Kings and Prince Counties",
+      "Annapolis County",
+      "Colchester County",
+      "Antigonish County",
+      "Queens and King counties",
+      "Inverness County",
+      "Queens County",
+      "Lunenburg County",
+      "Yarmouth County",
+      "Antigonish County",
+      "Hanty County",
+      "Cumberland County",
+      "Shelburne County",
+      "Richmond County",
+      "Green Creek",
+      "Coichester County",
+      "Richmond Co.",
+      "Guysborough County",
+      "Pictou County",
+      "Annapolis COunty",
+      "Annapolis Valley",
+      "Hants Co."
+    ) ~ "Nova Scotia",
+    region %in% c(
+      "Manitoba Statement",
+      "Manitoba National",
+      "Manitoba ",
+      "Manitoba Media advisory",
+      "Rosebank"
+    ) ~ "Manitoba",
+    region %in% c(
+      "PEI",
+      "Queens and Kings Districts",
+      "Queens and Kings counties",
+      "Queens and Kings County"
+    ) ~ "Prince Edward Island",
+    region %in% c(
+      "N.B. ",
+      "N.B.",
+      "New Brunswick Statement",
+      "Aroostook and Oxbow",
+      "New Brunswick Media advisory",
+      "NB"
+    ) ~ "New Brunswick",
+    region %in% c(
+      "Yukon Media advisory",
+      "Carcross",
+      "Yukon ",
+      "Whitehorse",
+      "Yukon Statement",
+      "Ross River",
+      "Haines Junction",
+      "Faro"
+    ) ~ "Yukon",
+    region %in% c(
+      "Alberta Statement",
+      "Alberta National",
+      "Alberta Media advisory",
+      "Alta.",
+      "Alta",
+      "Alberta Depot",
+      "Alberta National Depot",
+      "Alberta National Statement",
+      "Three Hills and Stettler"
+    ) ~ "Alberta",
+    region %in% c(
+      "Newfoundland and Labrador Media advisory",
+      "Newfoundland and Labrador Statement",
+      "Nain",
+      "Stephenville",
+      "Deer Lake",
+      "Hopedale",
+      "Ferryland and Stephenville",
+      "Grand Falls-Windsor",
+      "Holyrood and Stephenville"
+    ) ~ "Newfoundland and Labrador",
+    region %in% c(
+      "British Columbia National",
+      "Green Lake"
+    ) ~ "British Columbia",
+    region %in% c(
+      "Nunavut Media advisory"
+    ) ~ "Nunavut",
+    region %in% c(
+      "Northwest Territories Media advisory"
+    ) ~ "Northwest Territories",
+    TRUE ~ region
+  )
+}
+```
+
+Next we will apply our cleaning function to to our DataFrame, using the `mutate()` function from library(dplyr). Before this, to deal with the 24 *NA* values we identified in **region2**, we are going to apply another dplyr function called `coalesce()`, which will move replace the *NA* values in region2 with the values from **region1**. We also going to add one additional step before applying our custom cleaning function. This will be to trim any unnecessary white space from the beginning and end of each entry in **region2**. To do this, we use the `str_trim()` function from library(stringr). Finally, we'll apply our cleaning function, after which we'll inspect the results to see if it worked.
+
+```{r}
+#install.packages("stringr")
+library(stringr)
+
+rcmp_news_pp <- rcmp_news_pp %>%
+  mutate(region2 = coalesce(region2, region1)) %>%
+  mutate(region2 = str_trim(region2)) %>%
+  mutate(prov_terr = recode_regions(region2))
+
+paged_table(head(rcmp_news_pp, n = 200))
+```
+
+
+```{r, eval=FALSE}
 library(dplyr)
 library(ggplot2)
 library(stringr)
@@ -70,7 +256,7 @@ library(hrbrthemes)
 ```
 
 
-```{r}
+```{r, eval=FALSE}
 p1 <- rcmp_news %>%
   group_by(prov_terr) %>%
   count(name = "count") %>%
@@ -85,7 +271,8 @@ p1 <- rcmp_news %>%
 
 p1
 ```
-```{r}
+
+```{r, eval=FALSE}
 rcmp_news_count <- rcmp_news %>%
   filter(prov_terr != "British Columbia") %>%
   filter(!is.na(date_published)) %>%
@@ -119,7 +306,7 @@ p2 <- rcmp_news_count %>%
 p2
 ```
 
-```{r}
+```{r, eval=FALSE}
 p3 <- rcmp_news_count %>%
   ggplot(aes(x = date_published, y = count, color = prov_terr)) +
   geom_smooth(se = FALSE) +
@@ -133,7 +320,7 @@ p3 <- rcmp_news_count %>%
 p3
 ```
 
-```{r}
+```{r, eval=FALSE}
 p4 <- rcmp_news %>%
   filter(prov_terr != "British Columbia") %>%
   mutate(word_count = str_count(full_text, "\\w+")) %>%
@@ -149,7 +336,7 @@ p4 <- rcmp_news %>%
 p4
 ```
 
-```{r, fig.width=13, fig.height=8}
+```{r, eval=FALSE, fig.width=13, fig.height=8}
 library(cowplot)
 
 plot_grid(labels = "AUTO", p1, p2, p3, p4)
@@ -157,17 +344,17 @@ plot_grid(labels = "AUTO", p1, p2, p3, p4)
 
 # Sampling and Outputting
 
-```{r}
+```{r, eval=FALSE}
 library(gt)
 library(paletteer)
 library(tidyr)
 ```
 
-```{r}
+```{r, eval=FALSE}
 my_pattern <- "drug|contraband|bath salts|benzodiazepine|methamphetamine|ghb|cocaine|crack|cannabis|marijuana|weed|pot|hash|hashish|lsd| mdma|ecstasy|fentanyl|opioid|pcp|angel dust|acid|salvia|mushroom|heroin|ketamine"
 ```
 
-```{r}
+```{r, eval=FALSE}
 table1 <- rcmp_news %>%
   filter(prov_terr != "British Columbia") %>%
   filter(!is.na(image_url),
