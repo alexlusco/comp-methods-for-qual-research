@@ -1,0 +1,49 @@
+---
+title: "Computational Methods for Qualitative Research in Criminology and Criminal Justice Studies"
+description: |
+  Article supplement
+author:
+  - first_name: "Alex"
+    last_name: "Luscombe"
+    url: https://www.alexluscombe.ca
+    affiliation: University of Toronto
+    affiliation_url: 
+    orcid_id: 0000-0002-3052-5401
+  - first_name: "Jamie"
+    last_name: "Duncan"
+    url: https://jamieduncan.me/
+    affiliation: University of Toronto
+    affiliation_url: 
+    orcid_id: 0000-0002-5456-6486
+  - first_name: "Kevin"
+    last_name: "Walby"
+    url: https://www.uwinnipeg.ca/caij/about/index.html
+    affiliation: University of Winnipeg
+    affiliation_url: 
+    orcid_id: 0000-0002-5107-2309
+date: "`r Sys.Date()`"
+output: distill::distill_article
+---
+```{r}
+library(readr)
+```
+
+```{r}
+rcmp_news <- read_csv(here::here("rcmp-news-final-df-preprocessed.csv"))
+```
+
+Let's take a look at the results our DataFrame so far. For this we can use the ```head``` function from base R to view only the first 6 rows (we don't need to inspect all 13,000 + at this stage).
+
+```{r}
+library(rmarkdown)
+
+paged_table(head(rcmp_news))
+```
+
+To deal with the issues identified in our desired `province_territory` column, we can write a function that re-labels each of the entries we want to re-label...
+
+
+
+
+
+
