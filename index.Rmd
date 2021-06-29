@@ -1,7 +1,7 @@
 ---
 title: "Computational Methods for Qualitative Research in Criminology and Criminal Justice Studies"
 description: |
-  Article supplement
+  This article supplement, intended as a pedagogical tool, provides all of the code necessary to reproduce the case study illustration in *Computational Methods for Qualitative Research in Criminology and Criminal Justice Studies* (work in progress). To boost the pedagogical value of this resource, we have provided detailed explanations and commentaries throughout each step.
 author:
   - first_name: "Alex"
     last_name: "Luscombe"
@@ -232,7 +232,7 @@ recode_regions <- function(region) {
 }
 ```
 
-Next we will apply our cleaning function to to our DataFrame, using the `mutate()` function from library(dplyr). Before this, to deal with the 24 *NA* values we identified in **region2**, we are going to apply another dplyr function called `coalesce()`, which will move replace the *NA* values in region2 with the values from **region1**. We also going to add one additional step before applying our custom cleaning function. This will be to trim any unnecessary white space from the beginning and end of each entry in **region2**. To do this, we use the `str_trim()` function from library(stringr). Finally, we'll apply our cleaning function, after which we'll inspect the results to see if it worked.
+Next we will apply our cleaning function to to our DataFrame, using the `mutate()` function from library(dplyr). Before this, to deal with the 24 *NA* values we identified in **region2**, we are going to apply another dplyr function called `coalesce()`, which will move replace the *NA* values in region2 with the values from **region1**. We also going to add one additional step before applying our custom cleaning function. This will be to trim any unnecessary white space from the beginning and end of each entry in **region2**. To do this, we use the `str_trim()` function from library(stringr). Next, we'll apply our cleaning function, after which we'll inspect the results to see if it worked.
 
 ```{r}
 #install.packages("stringr")
@@ -241,39 +241,49 @@ library(stringr)
 rcmp_news_pp <- rcmp_news_pp %>%
   mutate(region2 = coalesce(region2, region1)) %>%
   mutate(region2 = str_trim(region2)) %>%
-  mutate(prov_terr = recode_regions(region2))
+  mutate(region2 = recode_regions(region2))
 
-paged_table(head(rcmp_news_pp, n = 200))
+rcmp_region_count <- rcmp_news_pp %>%
+  count(region2)
+  
+paged_table(rcmp_region_count)
 ```
 
+It worked! Finally, let's rename our **region1** and **region2** variables, calling them **town_city_county** and **prov_terr**. To this we can use the `rename()` function from library(dplyr).
 
-```{r, eval=FALSE}
-library(dplyr)
+```{r}
+rcmp_news_pp <- rcmp_news_pp %>%
+  rename(town_city_county = region1,
+         prov_terr = region2)
+```
+
+Now that we've fixed our issues with the province/territory data in our DataFrame, we can begin to explore the corpus. A great technique for getting to know the data in your corpus is to use *data visualization*. Combining standard data manipulation and data visualization techniques like counting and bar graphs, we can easily visualize some of the more macro-level patterns in our corpus (publication of news releases over time, by province/territory, etc.). To do this, we'll be using an R data visualization library called library(ggplot2). Since data often needs to be manipulated to some degree before visualization (e.g., counting the number of unique provinces/territories in the DataFrame, in order to create a bar chart visually representing the differences), we'll also be using more of library(stringr) and library(dplyr). Let's begin with a bar graph showing the total number of press releases in our corpus by province/territory. Note that to produce these graphs, we are going to use the theme aesthetics from library(hrbrthemes) and the default colour palette from library(fishualize), so you'll need to install these two libraries first before you can run the code.
+
+```{r}
+#install.packages("ggplot2")
+#install.packages("hrbrthemes")
+#install.packages("fishualize")
 library(ggplot2)
-library(stringr)
-library(ggridges)
-library(hrbrthemes)
-```
 
-
-```{r, eval=FALSE}
-p1 <- rcmp_news %>%
+rcmp_news_pp %>%
   group_by(prov_terr) %>%
   count(name = "count") %>%
   ggplot(aes(x = reorder(prov_terr, count), y = count)) +
   geom_col(fill = "#ca1928", show.legend = FALSE) +
-  theme_ipsum(grid="") +
+  hrbrthemes::theme_ipsum(grid="") +
   theme(axis.text.x = element_blank()) +
   geom_text(aes(label=scales::comma(count)), hjust=0, nudge_y=50) +
   expand_limits(y = c(0, 3400)) +
   coord_flip() +
   labs(x = "", y = "")
-
-p1
 ```
 
-```{r, eval=FALSE}
-rcmp_news_count <- rcmp_news %>%
+Nova Scotia, New Brunswick, and Newfound and Labrador account for the majority of news releases in the database we scraped. The two largest provinces in Canada - Ontario and Quebec - account for the least. Why? Here we can use some domain knowledge to interpret this: There are very few RCMP detachments in Ontario and Quebec, as both have provincial police forces (Ontario Provincial Police and Sûreté du Québec) that absorb many of the police duties that would otherwise be contracted to the RCMP. This fits clearly with what we know about policing in Canada. What is less immediately clear is why British Columbia only has two entries. Based again on our domain knowledge, we know that British Columbia has a strong RCMP presence (and unlike Ontario and Québec, does not have a provincial police force to act in lieu of the RCMP). So why the low number of news releases? ...
+
+Next, let's look at the total proportion of news releases produced over time by province/territory. To calculate this, we are going to manipulate the date variable, removing information about day and time, in order to count the total number of news releases produced by each province/territory for each year-month combination (2016-05, 2016-06, 2016-07, etc.).
+
+```{r}
+rcmp_news_count <- rcmp_news_pp %>%
   filter(prov_terr != "British Columbia") %>%
   filter(!is.na(date_published)) %>%
   group_by(prov_terr, date_published) %>%
@@ -293,35 +303,38 @@ rcmp_news_count <- rcmp_news_count %>%
   mutate(prop = count/total) %>%
   filter(date_published != "2016-12-01")
 
-p2 <- rcmp_news_count %>%
+rcmp_news_count %>%
   ggplot(aes(x = date_published, y = prop, fill = prov_terr)) +
   geom_col(position = "stack") +
   scale_y_continuous(labels = scales::percent_format()) +
   scale_x_date(breaks = as.Date(c("2017-01-01", "2018-01-01", "2019-01-01", "2020-01-01")), date_labels = "%Y") +
   fishualize::scale_fill_fish_d() +
-  theme_ipsum(grid = "") +
+  hrbrthemes::theme_ipsum(grid = "") +
   labs(y = "Proportion", x = "",
        fill = "")
-
-p2
 ```
 
-```{r, eval=FALSE}
-p3 <- rcmp_news_count %>%
+Now let's do the same thing with the raw count rather than the proportion.
+
+```{r}
+rcmp_news_count %>%
   ggplot(aes(x = date_published, y = count, color = prov_terr)) +
   geom_smooth(se = FALSE) +
   scale_y_continuous() +
   scale_x_date(breaks = as.Date(c("2017-01-01", "2018-01-01", "2019-01-01", "2020-01-01")), date_labels = "%Y") +
   fishualize::scale_color_fish_d() +
-  theme_ipsum(grid = "") +
+  hrbrthemes::theme_ipsum(grid = "") +
   labs(y = "Number of news releases", x = "",
        color = "")
-
-p3
 ```
 
-```{r, eval=FALSE}
-p4 <- rcmp_news %>%
+Finally, let's look at the distribution of total word count across each of the news releases in our corpus, again by province/territory. To produce this particular graph, we are going to use the `geom_density_ridges()` function from library(ggridges), an add on to library(ggplot2).
+
+```{r}
+#install.packages("ggridges")
+library(ggridges)
+
+rcmp_news_pp %>%
   filter(prov_terr != "British Columbia") %>%
   mutate(word_count = str_count(full_text, "\\w+")) %>%
   mutate(word_count_mean = mean(word_count, na.rm = TRUE)) %>%
@@ -330,16 +343,8 @@ p4 <- rcmp_news %>%
   geom_density_ridges(fill = "#ca1928", show.legend = FALSE) +
   geom_vline(aes(xintercept = word_count_mean), linetype="dotted", size = 1) +
   scale_x_log10(breaks = c(1, 10, 100, 1000, 5805)) +
-  theme_ipsum(grid = "X") +
+  hrbrthemes::theme_ipsum(grid = "X") +
   labs(x = "word count (log scale)", y = "")
-
-p4
-```
-
-```{r, eval=FALSE, fig.width=13, fig.height=8}
-library(cowplot)
-
-plot_grid(labels = "AUTO", p1, p2, p3, p4)
 ```
 
 # Sampling and Outputting
