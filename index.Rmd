@@ -22,8 +22,26 @@ author:
     affiliation_url: 
     orcid_id: 0000-0002-5107-2309
 date: "`r Sys.Date()`"
-output: distill::distill_article
+output: 
+  distill::distill_article:
+    toc: true
+    toc_depth: 2
+    code_folding: true
 ---
+
+# Defining the Problem
+
+# Collecting
+
+## Website Recon
+
+## Index Scrape
+
+## Contents Scrape
+
+# Parsing, Cleaning, and Exploring
+
+## Parsing and Cleaning
 ```{r}
 library(readr)
 ```
@@ -42,8 +60,104 @@ paged_table(head(rcmp_news))
 
 To deal with the issues identified in our desired `province_territory` column, we can write a function that re-labels each of the entries we want to re-label...
 
+## Exploring
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(stringr)
+library(ggridges)
+library(hrbrthemes)
+```
 
 
+```{r}
+p1 <- rcmp_news %>%
+  group_by(prov_terr) %>%
+  count(name = "count") %>%
+  ggplot(aes(x = reorder(prov_terr, count), y = count)) +
+  geom_col(fill = "#ca1928", show.legend = FALSE) +
+  theme_ipsum(grid="") +
+  theme(axis.text.x = element_blank()) +
+  geom_text(aes(label=scales::comma(count)), hjust=0, nudge_y=50) +
+  expand_limits(y = c(0, 3400)) +
+  coord_flip() +
+  labs(x = "", y = "")
 
+p1
+```
+```{r}
+rcmp_news_count <- rcmp_news %>%
+  filter(prov_terr != "British Columbia") %>%
+  filter(!is.na(date_published)) %>%
+  group_by(prov_terr, date_published) %>%
+  mutate(date_published = str_remove_all(pattern= " (\\d{2})(\\:)(\\d{2})(\\:)(\\d{2})", date_published)) %>%
+  mutate(date_published = as.Date(lubridate::ymd(date_published))) %>%
+  count(name = "count", .drop = TRUE)
 
+rcmp_news_count <- rcmp_news_count %>%
+  mutate(date_published = format(date_published, "%Y-%m")) %>%
+  mutate(date_published = paste(date_published, "-01", sep = "")) %>%
+  mutate(date_published = as.Date(date_published, "%Y-%m-%d"))
 
+rcmp_news_count <- rcmp_news_count %>%
+  group_by(date_published, prov_terr) %>%
+  summarize(count = sum(count)) %>%
+  mutate(total = sum(count)) %>%
+  mutate(prop = count/total) %>%
+  filter(date_published != "2016-12-01")
+
+p2 <- rcmp_news_count %>%
+  ggplot(aes(x = date_published, y = prop, fill = prov_terr)) +
+  geom_col(position = "stack") +
+  scale_y_continuous(labels = scales::percent_format()) +
+  scale_x_date(breaks = as.Date(c("2017-01-01", "2018-01-01", "2019-01-01", "2020-01-01")), date_labels = "%Y") +
+  fishualize::scale_fill_fish_d() +
+  theme_ipsum(grid = "") +
+  labs(y = "Proportion", x = "",
+       fill = "")
+
+p2
+```
+
+```{r}
+p3 <- rcmp_news_count %>%
+  ggplot(aes(x = date_published, y = count, color = prov_terr)) +
+  geom_smooth(se = FALSE) +
+  scale_y_continuous() +
+  scale_x_date(breaks = as.Date(c("2017-01-01", "2018-01-01", "2019-01-01", "2020-01-01")), date_labels = "%Y") +
+  fishualize::scale_color_fish_d() +
+  theme_ipsum(grid = "") +
+  labs(y = "Number of news releases", x = "",
+       color = "")
+
+p3
+```
+
+```{r}
+p4 <- rcmp_news %>%
+  filter(prov_terr != "British Columbia") %>%
+  mutate(word_count = str_count(full_text, "\\w+")) %>%
+  mutate(word_count_mean = mean(word_count, na.rm = TRUE)) %>%
+  group_by(prov_terr) %>%
+  ggplot(aes(x = word_count, y = prov_terr)) +
+  geom_density_ridges(fill = "#ca1928", show.legend = FALSE) +
+  geom_vline(aes(xintercept = word_count_mean), linetype="dotted", size = 1) +
+  scale_x_log10(breaks = c(1, 10, 100, 1000, 5805)) +
+  theme_ipsum(grid = "X") +
+  labs(x = "word count (log scale)", y = "")
+
+p4
+```
+
+```{r, fig.width=13, fig.height=8}
+library(cowplot)
+
+plot_grid(labels = "AUTO", p1, p2, p3, p4)
+```
+
+# Sampling and Outputting
+
+# Analyzing
+
+# Findings, Discussion, and Conclusion
