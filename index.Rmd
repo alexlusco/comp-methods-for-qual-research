@@ -25,7 +25,7 @@ date: "`r Sys.Date()`"
 output: 
   distill::distill_article:
     toc: true
-    toc_depth: 2
+    toc_depth: 3
     code_folding: true
 ---
 
@@ -33,15 +33,16 @@ output:
 
 # Collecting
 
-## Website Recon
+### Website Recon
 
-## Index Scrape
+!()[images/scrape_diagram.png]
 
-## Contents Scrape
+### Index Scrape
+
+### Contents Scrape
 
 # Parsing, Cleaning, and Exploring
 
-## Parsing and Cleaning
 ```{r}
 library(readr)
 ```
@@ -59,8 +60,6 @@ paged_table(head(rcmp_news))
 ```
 
 To deal with the issues identified in our desired `province_territory` column, we can write a function that re-labels each of the entries we want to re-label...
-
-## Exploring
 
 ```{r}
 library(dplyr)
@@ -157,6 +156,159 @@ plot_grid(labels = "AUTO", p1, p2, p3, p4)
 ```
 
 # Sampling and Outputting
+
+```{r}
+library(gt)
+library(paletteer)
+library(tidyr)
+```
+
+```{r}
+my_pattern <- "drug|contraband|bath salts|benzodiazepine|methamphetamine|ghb|cocaine|crack|cannabis|marijuana|weed|pot|hash|hashish|lsd| mdma|ecstasy|fentanyl|opioid|pcp|angel dust|acid|salvia|mushroom|heroin|ketamine"
+```
+
+```{r}
+table1 <- rcmp_news %>%
+  filter(prov_terr != "British Columbia") %>%
+  filter(!is.na(image_url),
+         !is.na(full_text)) %>%
+  group_by(prov_terr, image_url) %>%
+  mutate(full_text = str_to_lower(full_text)) %>%
+  count(tf = str_detect(full_text, my_pattern)) %>%
+  group_by(prov_terr, tf) %>%
+  summarize(sum = sum(n)) %>%
+  pivot_wider(names_from = tf, values_from = sum) %>%
+  mutate(`FALSE` = `FALSE` + `TRUE`) %>%
+  rename(`Total NRs w/ Images 2` = `TRUE`,
+         `Total NRs 2` = `FALSE`,
+         `Province/Territory` = prov_terr) %>%
+  mutate(`Percent NRs w/ Images 2` = round(`Total NRs w/ Images 2`/`Total NRs 2`*100, 2)) %>%
+  ungroup()
+
+table2 <- rcmp_news %>%
+  filter(prov_terr != "British Columbia") %>%
+  group_by(prov_terr) %>%
+  add_count(prov_terr, name = "total_press_releases") %>%
+  add_count(image_url, name = "total_images") %>%
+  summarize(total_press_releases = max(total_press_releases),
+            total_images = max(total_images)) %>%
+  mutate(proportion = round(total_images/total_press_releases*100, 2)) %>%
+  select(prov_terr, total_press_releases, total_images, proportion) %>%
+  #arrange(desc(total_images)) %>%
+  rename(`Province/Territory` = prov_terr,
+         `Total NRs` = total_press_releases,
+         `Total NRs w/ Images` = total_images,
+         `Percent NRs w/ Images` = proportion) %>%
+  ungroup()
+
+table3 <- table2 %>%
+  left_join(table1, by = c("Province/Territory" = "Province/Territory")) %>%
+  rename(` ` = "Province/Territory")
+
+table3 %>%
+  gt() %>%
+  tab_spanner(label = "Whole Corpus",
+              columns = c(`Total NRs`, `Total NRs w/ Images`, `Percent NRs w/ Images`)) %>%
+  tab_spanner(label = "Subset Corpus",
+              columns = c(`Total NRs 2`, `Total NRs w/ Images 2`, `Percent NRs w/ Images 2`)) %>%
+  data_color(
+    columns = c(`Total NRs`, `Total NRs w/ Images`, `Percent NRs w/ Images`, `Total NRs 2`, `Total NRs w/ Images 2`, `Percent NRs w/ Images 2`),
+    colors = scales::col_numeric(
+      paletteer::paletteer_d(
+        palette = "ggsci::red_material")
+        %>% as.character(),
+      domain = NULL
+      )
+  )
+```
+
+```{r, eval=FALSE}
+image_meta_data <- rcmp_news %>% 
+  ungroup() %>%
+  filter(prov_terr != "British Columbia") %>%
+  filter(!is.na(image_url)) %>%
+  mutate(full_text = str_to_lower(full_text)) %>%
+  filter(str_detect(full_text, my_pattern)) %>%
+  mutate(date_published = str_remove_all(pattern= " (\\d{2})(\\:)(\\d{2})(\\:)(\\d{2})", date_published)) %>%
+  mutate(date_published = as.Date(lubridate::ymd(date_published)))
+
+image_urls <- image_meta_data %>% select(image_url)
+
+image_urls1 <- slice(image_urls, 1:250)
+image_meta_data1 <- slice(image_meta_data, 1:250)
+
+image_urls2 <- slice(image_urls, 251:500)
+image_meta_data2 <- slice(image_meta_data, 251:500)
+
+image_urls3 <- slice(image_urls, 501:750)
+image_meta_data3 <- slice(image_meta_data, 501:750)
+
+image_urls4 <- slice(image_urls, 751:997)
+image_meta_data4 <- slice(image_meta_data, 751:997)
+```
+
+```{r, eval=FALSE}
+options(timeout=500)
+
+for (i in image_urls1){
+  
+  numbers <- 1:250
+  
+  download.file(i, paste("/Volumes/ajl_external/rcmp-news-images/rcmp-drug-crimes-corpus/", image_meta_data1$prov_terr, "_RCMP_", image_meta_data1$date_published, "_", numbers, ".jpg", sep = ""))
+  
+}
+
+for (i in image_urls2){
+  
+  numbers <- 251:500
+  
+  download.file(i, paste("/Volumes/ajl_external/rcmp-news-images/rcmp-drug-crimes-corpus/", image_meta_data2$prov_terr, "_RCMP_", image_meta_data2$date_published, "_", numbers, ".jpg", sep = ""))
+  
+}
+
+for (i in image_urls3){
+  
+  numbers <- 501:750
+  
+  download.file(i, paste("/Volumes/ajl_external/rcmp-news-images/rcmp-drug-crimes-corpus/", image_meta_data3$prov_terr, "_RCMP_", image_meta_data3$date_published, "_", numbers, ".jpg", sep = ""))
+  
+}
+
+for (i in image_urls4){
+  
+  numbers <- 751:997
+  
+  download.file(i, paste("/Volumes/ajl_external/rcmp-news-images/rcmp-drug-crimes-corpus/", image_meta_data4$prov_terr, "_RCMP_", image_meta_data4$date_published, "_", numbers, ".jpg", sep = ""))
+}
+```
+
+```{r, eval=FALSE}
+subset_corpus <- rcmp_news %>% 
+  ungroup() %>%
+  filter(prov_terr != "British Columbia") %>%
+  filter(!is.na(image_url)) %>%
+  mutate(full_text_lower = str_to_lower(full_text)) %>%
+  filter(str_detect(full_text_lower, my_pattern)) %>%
+  select(-full_text_lower, -region2) %>%
+  mutate(date_published = str_remove_all(pattern= " (\\d{2})(\\:)(\\d{2})(\\:)(\\d{2})", date_published)) %>%
+  mutate(date_published = as.Date(lubridate::ymd(date_published))) %>%
+  mutate(doc_id = row_number())
+
+subset_corpus <- subset_corpus %>%
+  mutate(date_published2 = paste("\n\nDATE: ", as.character(date_published), "\n\n", sep = "")) %>%
+  mutate(headline_text = paste("HEADLINE: ", headline_text, "\n\n", sep = "")) %>%
+  mutate(headline_url = paste("ARTICLE URL: ", headline_url, "\n\n", sep = "")) %>%
+  mutate(image_url = paste("IMAGE URL: ", image_url, "\n\n", sep = "")) %>%
+  mutate(prov_terr2 = paste("CITY/TOWN, PROVINCE/TERRITORY: ", region1, prov_terr, "\n\n", sep = "")) %>%
+  mutate(full_text = paste("FULL TEXT: ", full_text, "\n\n", sep = "")) %>%
+  mutate(text = paste(date_published2, headline_text, headline_url, image_url, prov_terr2, full_text)) %>%
+  mutate(doc_names = paste(prov_terr, "_RCMP_", date_published, "_", doc_id, sep = ""))
+
+subset_corpus %>%
+  select(doc_names, text) %>%
+  group_by(doc_names) %>%
+  do(write_csv(., paste0(unique(.$doc_names), ".txt", sep = ""), col_names = FALSE))
+```
 
 # Analyzing
 
