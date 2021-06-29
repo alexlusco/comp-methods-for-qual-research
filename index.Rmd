@@ -35,7 +35,7 @@ output:
 
 ### Website Recon
 
-!()[https://github.com/alexlusco/comp-methods-for-qual-research/blob/main/images/scrape_diagram.png]
+![](https://github.com/alexlusco/comp-methods-for-qual-research/blob/main/images/scrape_diagram.png)
 
 ### Index Scrape
 
