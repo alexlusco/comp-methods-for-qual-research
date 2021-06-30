@@ -349,18 +349,43 @@ rcmp_news_pp %>%
 
 # Sampling and Outputting
 
-```{r, eval=FALSE}
-library(gt)
-library(paletteer)
+As noted at the outset, we are interested in analyzing not only the textual component of our RCMP news corpus, but the visual component as well. The first question we might ask then is how many of the news releases actually contain images? To calculate this, we can create a table with four columns: one that indicates the province/territory of the RCMP detachment, one of the indicates the total number of news releases in the corpus, one of that indicates the total number of news releases in the corpus containing images, and finally, one that contains the percentage score of press releases taht contain images (for each province/territory). We can create this table using a number of helpful functions from library(dplyr), including `filter()` (to take out British Columbia), `add_count()` (to count the total number of press releases and the number of press releases containing images), and `mutate()` (to calculate the percentage score of news releases containing images), among others.
+
+```{r}
+table1 <- rcmp_news_pp %>%
+  filter(prov_terr != "British Columbia") %>%
+  group_by(prov_terr) %>%
+  add_count(prov_terr, name = "total_press_releases") %>%
+  add_count(image_url, name = "total_images") %>%
+  summarize(total_press_releases = max(total_press_releases),
+            total_images = max(total_images)) %>%
+  mutate(proportion = round(total_images/total_press_releases*100, 2)) %>%
+  select(prov_terr, total_press_releases, total_images, proportion) %>%
+  arrange(desc(proportion)) %>%
+  rename(`Province/Territory` = prov_terr,
+         `Total NRs` = total_press_releases,
+         `Total NRs w/ Images` = total_images,
+         `Percent NRs w/ Images` = proportion) %>%
+  ungroup()
+
+paged_table(table1)
+```
+
+These are very interesting results. But this is obviously much too large a corpus to qualitatively analyze, even if we only analyzed press releases that contained images. So we want to do now is sample the larger corpus, creating a subset that we can reasonably analyze. Although there are many ways one could do this, we are going to use a crude and simple methodology. This involves creating a dictionary of keywords, searching for the presence of these key words in the text of each news release, and including any news release that contains one or more of our keywords, and excluding all of those that contain none of our keywords. Since we are interested in textual and visual representations of alleged drug crimes, we are going to create a dictionary of drug-related keywords. Each word in the string is separated by the "|" symbol, which stands for "or". This is necessary as it will tell our string detection algorithm to search for the presence of *any* of the words in dictionary, rather than the presence of all of them. Note that we are writing the words in lower case and without any pluralization. This is because...
+
+```{r}
+my_pattern <- "drug|contraband|bath salts|benzodiazepine|methamphetamine|ghb|cocaine|crack|cannabis
+|marijuana|weed|pot|hash|hashish|lsd|mdma|ecstasy|fentanyl|opioid|pcp|angel dust|acid|salvia|
+mushroom|heroin|ketamine"
+```
+
+Now that we have created our dictionary of drug associated keywords, we can use a simple string searching algorithm to search the text of each news release for the presence of any of the keywords. To do this, we are going to use library(stringr)'s function `str_detect()`. We are also going to use the function `pivot_wider()`, from library(tidyr), to put the results into a more readable and easily manipulable format. 
+
+```{r}
+#install.packages("tidyr")
 library(tidyr)
-```
 
-```{r, eval=FALSE}
-my_pattern <- "drug|contraband|bath salts|benzodiazepine|methamphetamine|ghb|cocaine|crack|cannabis|marijuana|weed|pot|hash|hashish|lsd| mdma|ecstasy|fentanyl|opioid|pcp|angel dust|acid|salvia|mushroom|heroin|ketamine"
-```
-
-```{r, eval=FALSE}
-table1 <- rcmp_news %>%
+table2 <- rcmp_news_pp %>%
   filter(prov_terr != "British Columbia") %>%
   filter(!is.na(image_url),
          !is.na(full_text)) %>%
@@ -375,26 +400,22 @@ table1 <- rcmp_news %>%
          `Total NRs 2` = `FALSE`,
          `Province/Territory` = prov_terr) %>%
   mutate(`Percent NRs w/ Images 2` = round(`Total NRs w/ Images 2`/`Total NRs 2`*100, 2)) %>%
+  arrange(desc(`Percent NRs w/ Images 2`)) %>%
   ungroup()
 
-table2 <- rcmp_news %>%
-  filter(prov_terr != "British Columbia") %>%
-  group_by(prov_terr) %>%
-  add_count(prov_terr, name = "total_press_releases") %>%
-  add_count(image_url, name = "total_images") %>%
-  summarize(total_press_releases = max(total_press_releases),
-            total_images = max(total_images)) %>%
-  mutate(proportion = round(total_images/total_press_releases*100, 2)) %>%
-  select(prov_terr, total_press_releases, total_images, proportion) %>%
-  #arrange(desc(total_images)) %>%
-  rename(`Province/Territory` = prov_terr,
-         `Total NRs` = total_press_releases,
-         `Total NRs w/ Images` = total_images,
-         `Percent NRs w/ Images` = proportion) %>%
-  ungroup()
+paged_table(table2)
+```
 
-table3 <- table2 %>%
-  left_join(table1, by = c("Province/Territory" = "Province/Territory")) %>%
+To inspect the results of these two tables more fully, we can put them into the same table. It can also be useful to represent the results of a table as a heatmap...
+
+```{r}
+#install.packages("paletteer")
+#install.packages("gt")
+library(paletteer)
+library(gt)
+
+table3 <- table1 %>%
+  left_join(table2, by = c("Province/Territory" = "Province/Territory")) %>%
   rename(` ` = "Province/Territory")
 
 table3 %>%
@@ -414,8 +435,10 @@ table3 %>%
   )
 ```
 
+The subset corpus of 997 news releases (containing images) is a much more reasonably sized corpus to analyze. Although we may end up wanting to subset this corpus further, it is at very least a good place to start. What we want to do now is write some code that will: 1) create a DataFrame that contains only the values of our subset corpus; and 2) download each of the images and text data for the news releases. We can use metadata from the DataFrame to automatically name each of the images and corresponding text files, and put them into the same folder on our computer. 
+
 ```{r, eval=FALSE}
-image_meta_data <- rcmp_news %>% 
+image_meta_data <- rcmp_news_pp %>% 
   ungroup() %>%
   filter(prov_terr != "British Columbia") %>%
   filter(!is.na(image_url)) %>%
@@ -438,6 +461,8 @@ image_meta_data3 <- slice(image_meta_data, 501:750)
 image_urls4 <- slice(image_urls, 751:997)
 image_meta_data4 <- slice(image_meta_data, 751:997)
 ```
+
+Now let's download the images.
 
 ```{r, eval=FALSE}
 options(timeout=500)
@@ -474,6 +499,8 @@ for (i in image_urls4){
 }
 ```
 
+Finally, let's download the text files for each news release.
+
 ```{r, eval=FALSE}
 subset_corpus <- rcmp_news %>% 
   ungroup() %>%
@@ -501,6 +528,10 @@ subset_corpus %>%
   group_by(doc_names) %>%
   do(write_csv(., paste0(unique(.$doc_names), ".txt", sep = ""), col_names = FALSE))
 ```
+
+![Folder containing the 997 images and text files from our subset corpus](images/download_results1.png)
+
+![Example text file and image in the folder](images/download_results2.png)
 
 # Analyzing
 
