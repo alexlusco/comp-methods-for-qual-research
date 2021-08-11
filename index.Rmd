@@ -40,7 +40,185 @@ output:
 
 ### Index Scrape
 
-### Contents Scrape
+The first step we took in our index scrape was to create a file (a csv file), on our local computer, that would store the results of our scrape. This is not the only way to do this, but is the way that we find to be most efficient. Another way to do this would be to store the results in the RStudio's global environment, saving the results to your local computer after the scrape completes. Two major downsides to this approach are (1) you cannot see the results of the scrape until the scrape is completed; (2) if your scrape fails at some point (which it very likely will, especially on longer scrapes), you'll lose the results you had obtained up to that point. So, let's start by creating a csv spreadsheet that contains named columns for the data we'll be collecting (headline_url, headline_text, etc.) in our index scrape. To do this we'll use the library(tibble) and library(readr).
+
+```{r, eval=FALSE}
+#install.packages("tibble")
+#install.packages("readr")
+library(tibble)
+library(readr)
+
+# give the file you'll be creating a name 
+filename <- "rcmp-news-index-scrape.csv"
+
+# using the tibble function, create a dataframe with column headers
+create_data <- function(
+    headline_url = NA,
+    headline_text = NA,
+    date_published = NA,
+    metadata_text = NA,
+    page_url = NA
+  ) {
+    tibble(
+        headline_url = headline_url,
+        headline_text = headline_text,
+        date_published = date_published,
+        metadata_text = metadata_text,
+        page_url = page_url
+    )
+  }
+
+# write tibble to csv
+write_csv(create_data() %>% drop_na(), filename, append = TRUE, col_names = TRUE)
+```
+
+Next, let's write the code for our index scraping algorithm, which will obtain the data from the RCMP's website and populate the csv file we just created in the last chunk of code. We'll need an additional library to do this -- library(rvest) -- which will be used to get and parse the data from the RCMP's website. To locate the information we want in the HTML, we'll be specifying the html element that embeds the content we are interested in obtaining (link to full article, date, headline text, etc.). Obtaining these elements is a bit of art. There are [developer tools](https://developer.mozilla.org/en-US/docs/Learn/Common_questions/What_are_browser_developer_tools) built into every browser to easily obtain them. Another popular way of obtaining them is via the browser plug in "[selector gadget](https://selectorgadget.com/)". 
+
+```{r, eval=FALSE}
+#install.packages("rvest")
+#install.packages("glue")
+library(rvest)
+library(glue)
+
+base_url <- 'https://www.rcmp-grc.gc.ca/en/news?page='
+
+max_page_num <- NA # note that these pages are zero-indexed
+
+scrape_page <- function(page_num = 0) {
+
+  # grab html only once
+  page_url <- paste(base_url, page_num, sep = '')
+
+  curr_page <- read_html(page_url)
+
+  # zero in on news list
+  news_list <- curr_page %>%
+    html_node('.list-group')
+
+  # grab headline nodes
+  headline_nodes <- news_list %>%
+    html_nodes('div > div > a')
+
+  # use headline nodes to get urls
+  headline_url <- headline_nodes %>%
+    html_attr('href') %>%
+    url_absolute('https://www.rcmp-grc.gc.ca/en/news')
+
+  # use headline nodes to get text
+  headline_text <- headline_nodes %>%
+    html_text(trim = TRUE)
+
+  # grab metadata field
+  metadata <- news_list %>%
+    html_nodes('div > div > span.text-muted')
+
+  # use metadata field to grab pubdate
+  date_published <- metadata %>%
+    html_nodes('meta[itemprop=datePublished]') %>%
+    html_attr('content')
+
+  # use metadata field to grab metadata text
+  metadata_text <- metadata %>%
+    html_text(trim = TRUE)
+
+  # build a tibble
+  page_data <- create_data(
+    headline_url = headline_url,
+    headline_text = headline_text,
+    date_published = date_published,
+    metadata_text = metadata_text,
+    page_url = page_url,
+    scrape_time = now()
+  )
+
+  # write to csv
+  write_csv(page_data, filename, append = TRUE)
+
+  max_page <- page_data %>%
+    html_node('div.contextual-links-region ul.pagination li:nth-last-child(2)') %>%
+    html_text(trim = TRUE) %>%
+    as.numeric() %>%
+    -(1)
+
+  max_page_num <- max_page
+
+  Sys.sleep(3)
+
+  # recur
+  if ((page_num + 1) <= max_page_num) {
+    scrape_page(page_num = page_num + 1)
+  }
+
+}
+
+# run it once
+scrape_page()
+```
+
+#### SAve results of index scrape
+```{r}
+
+```
+
+
+### Contents Scrape #### ADD IMAGE SCRAPE
+
+```{r}
+index <- read_csv("rcmp-news-index-scrape.csv")
+
+index_list <- as.list(index$headline_url)
+
+sleep_interval <- 3
+
+filename <- 'rcmp-news-text-scrape.csv'
+
+create_data <- function(
+  headline_url = NA,
+  full_text = NA,
+  scrape_time = NA
+) {
+  tibble(
+    headline_url = headline_url,
+    full_text = full_text
+  ) %>%
+    mutate(
+      scrape_time = scrape_time
+    )
+}
+
+# write once to create headers
+write_csv(create_data() %>% drop_na(), filename, append = TRUE, col_names = TRUE)
+
+lapply(index_list, function(i) { 
+  
+  print(glue('Scraping page {i}…'))
+  
+  webpage <- read_html(i)
+  
+  node <- html_node(webpage, ".node-news-release > div")
+  
+  main_text <- html_text(node, trim = TRUE)
+  
+  print(main_text)
+  
+  currdata <- create_data(
+    headline_url = i,
+    full_text = main_text,
+    scrape_time = now()
+  )
+  
+  write_csv(currdata, filename, append = TRUE)
+  
+  Sys.sleep(sleep_interval)
+  
+})
+```
+
+### Merge and save results
+```{r}
+
+```
+
 
 # Parsing, Cleaning, and Exploring
 
@@ -374,9 +552,11 @@ paged_table(table1)
 These are very interesting results. But this is obviously much too large a corpus to qualitatively analyze, even if we only analyzed press releases that contained images. So we want to do now is sample the larger corpus, creating a subset that we can reasonably analyze. Although there are many ways one could do this, we are going to use a crude and simple methodology. This involves creating a dictionary of keywords, searching for the presence of these key words in the text of each news release, and including any news release that contains one or more of our keywords, and excluding all of those that contain none of our keywords. Since we are interested in textual and visual representations of alleged drug crimes, we are going to create a dictionary of drug-related keywords. Each word in the string is separated by the "|" symbol, which stands for "or". This is necessary as it will tell our string detection algorithm to search for the presence of *any* of the words in dictionary, rather than the presence of all of them. Note that we are writing the words in lower case and without any pluralization. This is because...
 
 ```{r}
-my_pattern <- "drug|contraband|bath salts|benzodiazepine|methamphetamine|ghb|cocaine|crack|cannabis
-|marijuana|weed|pot|hash|hashish|lsd|mdma|ecstasy|fentanyl|opioid|pcp|angel dust|acid|salvia|
-mushroom|heroin|ketamine"
+#my_pattern <- "drug|contraband|bath salts|benzodiazepine|methamphetamine|ghb|cocaine|crack|cannabis
+#|marijuana|weed|pot|hash|hashish|lsd|mdma|ecstasy|fentanyl|opioid|pcp|angel dust|acid|salvia|
+#mushroom|heroin|ketamine"
+
+#my_pattern2 <- "seiz"
 ```
 
 Now that we have created our dictionary of drug associated keywords, we can use a simple string searching algorithm to search the text of each news release for the presence of any of the keywords. To do this, we are going to use library(stringr)'s function `str_detect()`. We are also going to use the function `pivot_wider()`, from library(tidyr), to put the results into a more readable and easily manipulable format. 
@@ -391,7 +571,7 @@ table2 <- rcmp_news_pp %>%
          !is.na(full_text)) %>%
   group_by(prov_terr, image_url) %>%
   mutate(full_text = str_to_lower(full_text)) %>%
-  count(tf = str_detect(full_text, my_pattern)) %>%
+  count(tf = str_detect(full_text, my_pattern2)) %>%
   group_by(prov_terr, tf) %>%
   summarize(sum = sum(n)) %>%
   pivot_wider(names_from = tf, values_from = sum) %>%
@@ -414,18 +594,20 @@ To inspect the results of these two tables more fully, we can put them into the 
 library(paletteer)
 library(gt)
 
-table3 <- table1 %>%
-  left_join(table2, by = c("Province/Territory" = "Province/Territory")) %>%
+#table3 <- table1 %>%
+  #left_join(table2, by = c("Province/Territory" = "Province/Territory")) %>%
+  #rename(` ` = "Province/Territory")
+
+table1 <- table1 %>%
+  arrange(desc(`Total NRs`)) %>%
   rename(` ` = "Province/Territory")
 
-table3 %>%
+table1 %>%
   gt() %>%
-  tab_spanner(label = "Whole Corpus",
-              columns = c(`Total NRs`, `Total NRs w/ Images`, `Percent NRs w/ Images`)) %>%
-  tab_spanner(label = "Subset Corpus",
-              columns = c(`Total NRs 2`, `Total NRs w/ Images 2`, `Percent NRs w/ Images 2`)) %>%
+  #tab_spanner(label = "",
+  #            columns = c(`Total NRs`, `Total NRs w/ Images`, `Percent NRs w/ Images`)) %>%
   data_color(
-    columns = c(`Total NRs`, `Total NRs w/ Images`, `Percent NRs w/ Images`, `Total NRs 2`, `Total NRs w/ Images 2`, `Percent NRs w/ Images 2`),
+    columns = c(`Total NRs`, `Total NRs w/ Images`, `Percent NRs w/ Images`),
     colors = scales::col_numeric(
       paletteer::paletteer_d(
         palette = "ggsci::red_material")
@@ -438,28 +620,36 @@ table3 %>%
 The subset corpus of 997 news releases (containing images) is a much more reasonably sized corpus to analyze. Although we may end up wanting to subset this corpus further, it is at very least a good place to start. What we want to do now is write some code that will: 1) create a DataFrame that contains only the values of our subset corpus; and 2) download each of the images and text data for the news releases. We can use metadata from the DataFrame to automatically name each of the images and corresponding text files, and put them into the same folder on our computer. 
 
 ```{r, eval=FALSE}
-image_meta_data <- rcmp_news_pp %>% 
+#install.packages("splitstackshape")
+library(splitstackshape)
+
+#image_meta_data <- rcmp_news_pp %>% 
   ungroup() %>%
   filter(prov_terr != "British Columbia") %>%
   filter(!is.na(image_url)) %>%
-  mutate(full_text = str_to_lower(full_text)) %>%
-  filter(str_detect(full_text, my_pattern)) %>%
+  #mutate(full_text = str_to_lower(full_text)) %>%
+  #filter(str_detect(full_text, my_pattern)) %>%
   mutate(date_published = str_remove_all(pattern= " (\\d{2})(\\:)(\\d{2})(\\:)(\\d{2})", date_published)) %>%
-  mutate(date_published = as.Date(lubridate::ymd(date_published)))
+  mutate(date_published = as.Date(lubridate::ymd(date_published))) %>%
+  mutate(year = as.numeric(str_extract(date_published, "\\d{4}")))
+
+#image_meta_data <- stratified(image_meta_data, c("prov_terr", "year"), .15)
+
+
 
 image_urls <- image_meta_data %>% select(image_url)
 
 image_urls1 <- slice(image_urls, 1:250)
 image_meta_data1 <- slice(image_meta_data, 1:250)
 
-image_urls2 <- slice(image_urls, 251:500)
-image_meta_data2 <- slice(image_meta_data, 251:500)
+image_urls2 <- slice(image_urls, 251:497)
+image_meta_data2 <- slice(image_meta_data, 251:497)
 
 image_urls3 <- slice(image_urls, 501:750)
-image_meta_data3 <- slice(image_meta_data, 501:750)
+#image_meta_data3 <- slice(image_meta_data, 501:750)
 
 image_urls4 <- slice(image_urls, 751:997)
-image_meta_data4 <- slice(image_meta_data, 751:997)
+#image_meta_data4 <- slice(image_meta_data, 751:997)
 ```
 
 Now let's download the images.
@@ -471,15 +661,15 @@ for (i in image_urls1){
   
   numbers <- 1:250
   
-  download.file(i, paste("/Volumes/ajl_external/rcmp-news-images/rcmp-drug-crimes-corpus/", image_meta_data1$prov_terr, "_RCMP_", image_meta_data1$date_published, "_", numbers, ".jpg", sep = ""))
+  download.file(i, paste("/Volumes/ajl_external/rcmp-news-images/rcmp-drug-crimes-stratified-random/", image_meta_data1$prov_terr, "_RCMP_", image_meta_data1$date_published, "_", numbers, ".jpg", sep = ""))
   
 }
 
 for (i in image_urls2){
   
-  numbers <- 251:500
+  numbers <- 251:497
   
-  download.file(i, paste("/Volumes/ajl_external/rcmp-news-images/rcmp-drug-crimes-corpus/", image_meta_data2$prov_terr, "_RCMP_", image_meta_data2$date_published, "_", numbers, ".jpg", sep = ""))
+  download.file(i, paste("/Volumes/ajl_external/rcmp-news-images/rcmp-drug-crimes-stratified-random/", image_meta_data2$prov_terr, "_RCMP_", image_meta_data2$date_published, "_", numbers, ".jpg", sep = ""))
   
 }
 
@@ -513,15 +703,20 @@ subset_corpus <- rcmp_news %>%
   mutate(date_published = as.Date(lubridate::ymd(date_published))) %>%
   mutate(doc_id = row_number())
 
-subset_corpus <- subset_corpus %>%
+subset_corpus <- image_meta_data %>%
+  mutate(date_published = str_remove_all(pattern= " (\\d{2})(\\:)(\\d{2})(\\:)(\\d{2})", date_published)) %>%
+  mutate(date_published = as.Date(lubridate::ymd(date_published))) %>%
+  mutate(doc_id = row_number()) %>%
   mutate(date_published2 = paste("\n\nDATE: ", as.character(date_published), "\n\n", sep = "")) %>%
   mutate(headline_text = paste("HEADLINE: ", headline_text, "\n\n", sep = "")) %>%
   mutate(headline_url = paste("ARTICLE URL: ", headline_url, "\n\n", sep = "")) %>%
   mutate(image_url = paste("IMAGE URL: ", image_url, "\n\n", sep = "")) %>%
-  mutate(prov_terr2 = paste("CITY/TOWN, PROVINCE/TERRITORY: ", region1, prov_terr, "\n\n", sep = "")) %>%
+  mutate(prov_terr2 = paste("CITY/TOWN, PROVINCE/TERRITORY: ", town_city_county, prov_terr, "\n\n", sep = "")) %>%
   mutate(full_text = paste("FULL TEXT: ", full_text, "\n\n", sep = "")) %>%
   mutate(text = paste(date_published2, headline_text, headline_url, image_url, prov_terr2, full_text)) %>%
   mutate(doc_names = paste(prov_terr, "_RCMP_", date_published, "_", doc_id, sep = ""))
+
+setwd("/Volumes/ajl_external/rcmp-news-images/rcmp-drug-crimes-stratified-random/")
 
 subset_corpus %>%
   select(doc_names, text) %>%
