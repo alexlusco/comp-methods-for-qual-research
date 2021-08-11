@@ -552,11 +552,17 @@ paged_table(table1)
 These are very interesting results. But this is obviously much too large a corpus to qualitatively analyze, even if we only analyzed press releases that contained images. So we want to do now is sample the larger corpus, creating a subset that we can reasonably analyze. Although there are many ways one could do this, we are going to use a crude and simple methodology. This involves creating a dictionary of keywords, searching for the presence of these key words in the text of each news release, and including any news release that contains one or more of our keywords, and excluding all of those that contain none of our keywords. Since we are interested in textual and visual representations of alleged drug crimes, we are going to create a dictionary of drug-related keywords. Each word in the string is separated by the "|" symbol, which stands for "or". This is necessary as it will tell our string detection algorithm to search for the presence of *any* of the words in dictionary, rather than the presence of all of them. Note that we are writing the words in lower case and without any pluralization. This is because...
 
 ```{r}
+<<<<<<< HEAD
 #my_pattern <- "drug|contraband|bath salts|benzodiazepine|methamphetamine|ghb|cocaine|crack|cannabis
 #|marijuana|weed|pot|hash|hashish|lsd|mdma|ecstasy|fentanyl|opioid|pcp|angel dust|acid|salvia|
 #mushroom|heroin|ketamine"
 
 #my_pattern2 <- "seiz"
+=======
+my_pattern <- "drug|contraband|bath salts|benzodiazepine|methamphetamine|ghb|cocaine|crack|cannabis
+|marijuana|weed|pot|hash|hashish|lsd|mdma|ecstasy|fentanyl|opioid|pcp|angel dust|acid|salvia|
+mushroom|heroin|ketamine"
+>>>>>>> dc8e44b659ebb0487aed562f7514dc12c22a250d
 ```
 
 Now that we have created our dictionary of drug associated keywords, we can use a simple string searching algorithm to search the text of each news release for the presence of any of the keywords. To do this, we are going to use library(stringr)'s function `str_detect()`. We are also going to use the function `pivot_wider()`, from library(tidyr), to put the results into a more readable and easily manipulable format. 
@@ -587,6 +593,7 @@ paged_table(table2)
 ```
 
 To inspect the results of these two tables more fully, we can put them into the same table. It can also be useful to represent the results of a table as a heatmap...
+<<<<<<< HEAD
 
 ```{r}
 #install.packages("paletteer")
@@ -600,6 +607,17 @@ library(gt)
 
 table1 <- table1 %>%
   arrange(desc(`Total NRs`)) %>%
+=======
+
+```{r}
+#install.packages("paletteer")
+#install.packages("gt")
+library(paletteer)
+library(gt)
+
+table3 <- table1 %>%
+  left_join(table2, by = c("Province/Territory" = "Province/Territory")) %>%
+>>>>>>> dc8e44b659ebb0487aed562f7514dc12c22a250d
   rename(` ` = "Province/Territory")
 
 table1 %>%
@@ -620,10 +638,14 @@ table1 %>%
 The subset corpus of 997 news releases (containing images) is a much more reasonably sized corpus to analyze. Although we may end up wanting to subset this corpus further, it is at very least a good place to start. What we want to do now is write some code that will: 1) create a DataFrame that contains only the values of our subset corpus; and 2) download each of the images and text data for the news releases. We can use metadata from the DataFrame to automatically name each of the images and corresponding text files, and put them into the same folder on our computer. 
 
 ```{r, eval=FALSE}
+<<<<<<< HEAD
 #install.packages("splitstackshape")
 library(splitstackshape)
 
 #image_meta_data <- rcmp_news_pp %>% 
+=======
+image_meta_data <- rcmp_news_pp %>% 
+>>>>>>> dc8e44b659ebb0487aed562f7514dc12c22a250d
   ungroup() %>%
   filter(prov_terr != "British Columbia") %>%
   filter(!is.na(image_url)) %>%
