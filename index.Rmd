@@ -42,12 +42,14 @@ output:
 
 The first step we took in our index scrape was to create a file (a csv file), on our local computer, that would store the results of our scrape. This is not the only way to do this, but is the way that we find to be most efficient. Another way to do this would be to store the results in the RStudio's global environment, saving the results to your local computer after the scrape completes. Two major downsides to this approach are (1) you cannot see the results of the scrape until the scrape is completed; (2) if your scrape fails at some point (which it very likely will, especially on longer scrapes), you'll lose the results you had obtained up to that point. So, let's start by creating a csv spreadsheet that contains named columns for the data we'll be collecting (headline_url, headline_text, etc.) in our index scrape. To do this we'll use the library(tibble) and library(readr).
 
-```{r, eval=FALSE}
+```{r}
 #install.packages("tibble")
 #install.packages("readr")
 library(tibble)
 library(readr)
+```
 
+```{r, eval=FALSE}
 # give the file you'll be creating a name 
 filename <- "rcmp-news-index-scrape.csv"
 
@@ -74,12 +76,14 @@ write_csv(create_data() %>% drop_na(), filename, append = TRUE, col_names = TRUE
 
 Next, let's write the code for our index scraping algorithm, which will obtain the data from the RCMP's website and populate the csv file we just created in the last chunk of code. We'll need an additional library to do this -- library(rvest) -- which will be used to get and parse the data from the RCMP's website. To locate the information we want in the HTML, we'll be specifying the html element that embeds the content we are interested in obtaining (link to full article, date, headline text, etc.). Obtaining these elements is a bit of art. There are [developer tools](https://developer.mozilla.org/en-US/docs/Learn/Common_questions/What_are_browser_developer_tools) built into every browser to easily obtain them. Another popular way of obtaining them is via the browser plug in "[selector gadget](https://selectorgadget.com/)". 
 
-```{r, eval=FALSE}
+```{r}
 #install.packages("rvest")
 #install.packages("glue")
 library(rvest)
 library(glue)
+```
 
+```{r, eval=FALSE}
 base_url <- 'https://www.rcmp-grc.gc.ca/en/news?page='
 
 max_page_num <- NA # note that these pages are zero-indexed
@@ -155,15 +159,12 @@ scrape_page <- function(page_num = 0) {
 scrape_page()
 ```
 
-#### SAve results of index scrape
-```{r}
-
-```
+#### Save results of index scrape
 
 
 ### Contents Scrape #### ADD IMAGE SCRAPE
 
-```{r}
+```{r, eval=FALSE}
 index <- read_csv("rcmp-news-index-scrape.csv")
 
 index_list <- as.list(index$headline_url)
@@ -215,26 +216,20 @@ lapply(index_list, function(i) {
 ```
 
 ### Merge and save results
-```{r}
-
-```
-
 
 # Parsing, Cleaning, and Exploring
 
 ```{r}
-#install.packages("readr")
-library(readr)
-
 rcmp_news <- read_csv(here::here("rcmp-news-df.csv"))
 ```
 
 Let's take a look at the results our DataFrame so far. For this we can use the `head()` function from base R to view only the first 6 rows of each variable.
+```{r}
+#install.packages("rmarkdown")
+library(rmarkdown)
+```
 
 ```{r}
-#install.packageS("rmarkdown")
-library(rmarkdown)
-
 paged_table(head(rcmp_news))
 ```
 
@@ -243,7 +238,9 @@ Inspecting the **region** variable, we can see that both the city/town/county an
 ```{r}
 #install.packages("tidyr")
 library(tidyr)
+```
 
+```{r}
 rcmp_news_pp <- rcmp_news %>%
   separate(region, c("region1", "region2"), sep = ", ")
 
@@ -254,7 +251,9 @@ Inspecting the first 200 results, we see that it *mostly* worked, until about pa
 ```{r}
 #install.packges("dplyr")
 library(dplyr)
+```
 
+```{r}
 rcmp_region_count <- rcmp_news_pp %>%
   count(region2)
   
@@ -415,7 +414,9 @@ Next we will apply our cleaning function to to our DataFrame, using the `mutate(
 ```{r}
 #install.packages("stringr")
 library(stringr)
+```
 
+```{r}
 rcmp_news_pp <- rcmp_news_pp %>%
   mutate(region2 = coalesce(region2, region1)) %>%
   mutate(region2 = str_trim(region2)) %>%
@@ -442,7 +443,9 @@ Now that we've fixed our issues with the province/territory data in our DataFram
 #install.packages("hrbrthemes")
 #install.packages("fishualize")
 library(ggplot2)
+```
 
+```{r}
 rcmp_news_pp %>%
   group_by(prov_terr) %>%
   count(name = "count") %>%
@@ -511,7 +514,9 @@ Finally, let's look at the distribution of total word count across each of the n
 ```{r}
 #install.packages("ggridges")
 library(ggridges)
+```
 
+```{r}
 rcmp_news_pp %>%
   filter(prov_terr != "British Columbia") %>%
   mutate(word_count = str_count(full_text, "\\w+")) %>%
@@ -529,7 +534,7 @@ rcmp_news_pp %>%
 
 As noted at the outset, we are interested in analyzing not only the textual component of our RCMP news corpus, but the visual component as well. The first question we might ask then is how many of the news releases actually contain images? To calculate this, we can create a table with four columns: one that indicates the province/territory of the RCMP detachment, one of the indicates the total number of news releases in the corpus, one of that indicates the total number of news releases in the corpus containing images, and finally, one that contains the percentage score of press releases taht contain images (for each province/territory). We can create this table using a number of helpful functions from library(dplyr), including `filter()` (to take out British Columbia), `add_count()` (to count the total number of press releases and the number of press releases containing images), and `mutate()` (to calculate the percentage score of news releases containing images), among others.
 
-```{r}
+```{r, eval=FALSE}
 table1 <- rcmp_news_pp %>%
   filter(prov_terr != "British Columbia") %>%
   group_by(prov_terr) %>%
@@ -551,26 +556,8 @@ paged_table(table1)
 
 These are very interesting results. But this is obviously much too large a corpus to qualitatively analyze, even if we only analyzed press releases that contained images. So we want to do now is sample the larger corpus, creating a subset that we can reasonably analyze. Although there are many ways one could do this, we are going to use a crude and simple methodology. This involves creating a dictionary of keywords, searching for the presence of these key words in the text of each news release, and including any news release that contains one or more of our keywords, and excluding all of those that contain none of our keywords. Since we are interested in textual and visual representations of alleged drug crimes, we are going to create a dictionary of drug-related keywords. Each word in the string is separated by the "|" symbol, which stands for "or". This is necessary as it will tell our string detection algorithm to search for the presence of *any* of the words in dictionary, rather than the presence of all of them. Note that we are writing the words in lower case and without any pluralization. This is because...
 
-```{r}
-<<<<<<< HEAD
-#my_pattern <- "drug|contraband|bath salts|benzodiazepine|methamphetamine|ghb|cocaine|crack|cannabis
-#|marijuana|weed|pot|hash|hashish|lsd|mdma|ecstasy|fentanyl|opioid|pcp|angel dust|acid|salvia|
-#mushroom|heroin|ketamine"
 
-#my_pattern2 <- "seiz"
-=======
-my_pattern <- "drug|contraband|bath salts|benzodiazepine|methamphetamine|ghb|cocaine|crack|cannabis
-|marijuana|weed|pot|hash|hashish|lsd|mdma|ecstasy|fentanyl|opioid|pcp|angel dust|acid|salvia|
-mushroom|heroin|ketamine"
->>>>>>> dc8e44b659ebb0487aed562f7514dc12c22a250d
-```
-
-Now that we have created our dictionary of drug associated keywords, we can use a simple string searching algorithm to search the text of each news release for the presence of any of the keywords. To do this, we are going to use library(stringr)'s function `str_detect()`. We are also going to use the function `pivot_wider()`, from library(tidyr), to put the results into a more readable and easily manipulable format. 
-
-```{r}
-#install.packages("tidyr")
-library(tidyr)
-
+```{r, eval=FALSE}
 table2 <- rcmp_news_pp %>%
   filter(prov_terr != "British Columbia") %>%
   filter(!is.na(image_url),
@@ -593,31 +580,17 @@ paged_table(table2)
 ```
 
 To inspect the results of these two tables more fully, we can put them into the same table. It can also be useful to represent the results of a table as a heatmap...
-<<<<<<< HEAD
 
 ```{r}
 #install.packages("paletteer")
 #install.packages("gt")
 library(paletteer)
 library(gt)
+```
 
-#table3 <- table1 %>%
-  #left_join(table2, by = c("Province/Territory" = "Province/Territory")) %>%
-  #rename(` ` = "Province/Territory")
-
-table1 <- table1 %>%
-  arrange(desc(`Total NRs`)) %>%
-=======
-
-```{r}
-#install.packages("paletteer")
-#install.packages("gt")
-library(paletteer)
-library(gt)
-
+```{r, eval=FALSE}
 table3 <- table1 %>%
   left_join(table2, by = c("Province/Territory" = "Province/Territory")) %>%
->>>>>>> dc8e44b659ebb0487aed562f7514dc12c22a250d
   rename(` ` = "Province/Territory")
 
 table1 %>%
@@ -637,11 +610,12 @@ table1 %>%
 
 The subset corpus of 997 news releases (containing images) is a much more reasonably sized corpus to analyze. Although we may end up wanting to subset this corpus further, it is at very least a good place to start. What we want to do now is write some code that will: 1) create a DataFrame that contains only the values of our subset corpus; and 2) download each of the images and text data for the news releases. We can use metadata from the DataFrame to automatically name each of the images and corresponding text files, and put them into the same folder on our computer. 
 
-```{r, eval=FALSE}
-<<<<<<< HEAD
+```{r}
 #install.packages("splitstackshape")
 library(splitstackshape)
+```
 
+```{r, eval=FALSE}
 #image_meta_data <- rcmp_news_pp %>% 
 =======
 image_meta_data <- rcmp_news_pp %>% 
