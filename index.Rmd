@@ -255,22 +255,19 @@ paged_table(head(rcmp_news))
 Inspecting the **region** variable, we can see that both the city/town/county and province/territory are grouped together and separated by a ",". For example, on the first row, we have "Iqaluit, Nunavut", and one the second row, we have "Dauphin, Manitoba". As it is going to be useful for our analysis to explore pattern in the data by province/territory, we will want to split the **region** variable so that we have two variables instead, one that contains the town/city/county information, and one that contains the province/territory information. We can achieve this using `separate()` function, which comes from library(tidyr). We will apply the `separate()` function to our region variable, saving the results of our DataFrame (rcmp_news) into a new DataFrame (rcmp_news_pp, where pp stands for "pre-processed"). The `separate()` function requires you to provide the names of the new variables you'll be creating (i.e., what the information on the left and right of the "," will be saved into). We will call these "region1" (town/city/county) and "region2" (province/territory).
 
 ```{r}
-#install.packages("tidyr")
-library(tidyr)
+#install.packges("dplyr")
+library(dplyr)
 ```
 
 ```{r}
 rcmp_news_pp <- rcmp_news %>%
+  separate(metadata_text, c("date", "region"), sep = "— ") %>%
+  select(-date) %>%
   separate(region, c("region1", "region2"), sep = ", ")
 
 paged_table(head(rcmp_news_pp, n = 200)) #inspect the results, again using the head() function, but this time let's inspect the first 200 results
 ```
 Inspecting the first 200 results, we see that it *mostly* worked, until about page 14. On the second row of page 14, in the **region2** column, we can see that "Ontario Media advisory" has been entered where we expected the result to be just "Ontario". Flipping through more of the pages, we see a similar labeling issue on page 18 ("Ontario NCR", "Guysborough County") and on page 19 ("Manitoba Statement"). At this stage we should ask: how many of the **region2** values contain information other than just the name of the province/territory? The easiest way to do this is to use the `count()` function from library(dplyr) to count the total number of times that each unique entry appears in the **region2** variable. From here we can print the results of our count in a table that we can manually inspect.
-
-```{r}
-#install.packges("dplyr")
-library(dplyr)
-```
 
 ```{r}
 rcmp_region_count <- rcmp_news_pp %>%
