@@ -243,16 +243,16 @@ write_csv(combined_df, "rcmp-news-df.csv")
 ```{r}
 #rm(list=ls()) # you may want to clear your global environment at this point
 
-rcmp_news <- read_csv(here::here("rcmp-news-df.csv"))
+rcmp_news <- read_csv("rcmp-news-df.csv")
 ```
 
 Let's take a look at the results our DataFrame so far. For this we can use the `head()` function from base R to view only the first 6 rows of each variable.
 
 ```{r}
-paged_table(head(rcmp_news))
+paged_table(rcmp_news, options = list(rows.print = 2))
 ```
 
-Inspecting the **region** variable, we can see that both the city/town/county and province/territory are grouped together and separated by a ",". For example, on the first row, we have "Iqaluit, Nunavut", and one the second row, we have "Dauphin, Manitoba". As it is going to be useful for our analysis to explore pattern in the data by province/territory, we will want to split the **region** variable so that we have two variables instead, one that contains the town/city/county information, and one that contains the province/territory information. We can achieve this using `separate()` function, which comes from library(tidyr). We will apply the `separate()` function to our region variable, saving the results of our DataFrame (rcmp_news) into a new DataFrame (rcmp_news_pp, where pp stands for "pre-processed"). The `separate()` function requires you to provide the names of the new variables you'll be creating (i.e., what the information on the left and right of the "," will be saved into). We will call these "region1" (town/city/county) and "region2" (province/territory).
+Inspecting the **region** variable, we can see that both the city/town/county and province/territory are grouped together and separated by a ",". For example, on the first row, we have "Iqaluit, Nunavut", and one the second row, we have "Dauphin, Manitoba". As it is going to be useful for our analysis to explore pattern in the data by province/territory, we will want to split the **region** variable so that we have two variables instead, one that contains the town/city/county information, and one that contains the province/territory information. We can achieve this using `separate()` function, which comes from library(tidyr). We're also going to load library(dplyr) at this point for the `select()` function. 
 
 ```{r}
 #install.packges("dplyr")
@@ -265,9 +265,13 @@ rcmp_news_pp <- rcmp_news %>%
   select(-date) %>%
   separate(region, c("region1", "region2"), sep = ", ")
 
-paged_table(head(rcmp_news_pp, n = 200)) #inspect the results, again using the head() function, but this time let's inspect the first 200 results
+# first two lines for display only, can ignore
+rcmp_news_pp %>%
+  mutate(full_text = stringr::str_extract(full_text, ".*?[a-z0-9][.?!](?= )")) %>%
+  mutate(full_text = stringr::str_replace(full_text, "\\.", ". [...]")) %>%
+  paged_table(options = list(max.print = 200)) #inspect the results, again using the head() function, but this time let's inspect the first 200 results
 ```
-Inspecting the first 200 results, we see that it *mostly* worked, until about page 14. On the second row of page 14, in the **region2** column, we can see that "Ontario Media advisory" has been entered where we expected the result to be just "Ontario". Flipping through more of the pages, we see a similar labeling issue on page 18 ("Ontario NCR", "Guysborough County") and on page 19 ("Manitoba Statement"). At this stage we should ask: how many of the **region2** values contain information other than just the name of the province/territory? The easiest way to do this is to use the `count()` function from library(dplyr) to count the total number of times that each unique entry appears in the **region2** variable. From here we can print the results of our count in a table that we can manually inspect.
+Inspecting the first 200 results, we see that it mostly worked, until about page 14. On the second row of page 14, in the **region2** column, we can see that "Ontario Media advisory" has been entered where we expected the result to be just "Ontario". Flipping through more of the pages, we see a similar labeling issue on page 18 ("Ontario NCR", "Guysborough County") and on page 19 ("Manitoba Statement"). At this stage we should ask: how many of the **region2** values contain information other than just the name of the province/territory? The easiest way to do this is to use the `count()` function from library(dplyr) to count the total number of times that each unique entry appears in the **region2** variable. From here we can print the results of our count in a table that we can manually inspect.
 
 ```{r}
 rcmp_region_count <- rcmp_news_pp %>%
@@ -275,7 +279,7 @@ rcmp_region_count <- rcmp_news_pp %>%
   
 paged_table(rcmp_region_count)
 ```
-Paging through the elements in this table, we can see two problems: 1) there's a lot of entries in the region2 variable that contain more or different information then the name of the province/territory; and 2) on the last page of the table, page 14, we see that there are 24 news releases in our corpus where the **region2** value is *NA*, meaning it is missing. This brings us to our first major cleaning operation: fixing the entries in our **region2** variable so that it only contains information on the province/territory of the RCMP detachment authoring the news release. To deal with this issue, we can write a custom function that re-labels each of the entries we want to re-label in region2. This is not the fastest nor most efficient way to achieve this result, but it is one of the easiest. (As this is a long chunk of code, we have hidden it from view. Click "Show code" to view.)
+Paging through the elements in this table, we can see two problems: 1) there's many entries in the **region2** variable that contain more or different information then the name of the province/territory; and 2) on the last page of the table, page 14, we see that there are 24 news releases in our corpus where the **region2** value is *NA*, meaning it is missing. This brings us to our first major cleaning operation: fixing the entries in our **region2** variable so that it only contains information on the province/territory of the RCMP detachment authoring the news release. To deal with this issue, we can write a simple function to re-label each of the entries we want to re-label in **region2**. (As this is a long chunk of code, we have hidden it from view. Click "Show code" to view.)
 
 ```{r code_folding=TRUE}
 recode_regions <- function(region) {
@@ -425,7 +429,7 @@ recode_regions <- function(region) {
 }
 ```
 
-Next we will apply our cleaning function to to our DataFrame, using the `mutate()` function from library(dplyr). Before this, to deal with the 24 *NA* values we identified in **region2**, we are going to apply another dplyr function called `coalesce()`, which will move replace the *NA* values in region2 with the values from **region1**. We also going to add one additional step before applying our custom cleaning function. This will be to trim any unnecessary white space from the beginning and end of each entry in **region2**. To do this, we use the `str_trim()` function from library(stringr). Next, we'll apply our cleaning function, after which we'll inspect the results to see if it worked.
+Next we will apply our cleaning function to to our dataframe, using the `mutate()` function from library(dplyr). Before this, to deal with the 24 *NA* values we identified in **region2**, we are going to apply another dplyr function called `coalesce()`, which will move replace the *NA* values in **region2** with the values from **region1**. We also going to add one additional step before applying our cleaning function. This will be to trim any unnecessary white space from the beginning and end of each entry in **region2**. To do this, we use the `str_trim()` function from library(stringr). FInally, we'll apply our cleaning function.
 
 ```{r}
 #install.packages("stringr")
@@ -444,7 +448,7 @@ rcmp_region_count <- rcmp_news_pp %>%
 paged_table(rcmp_region_count)
 ```
 
-It worked! Finally, let's rename our **region1** and **region2** variables, calling them **town_city_county** and **prov_terr**. To this we can use the `rename()` function from library(dplyr).
+It worked! Using the `rename()` function from library(dplyr), let's rename our **region1** and **region2** variables, calling them **town_city_county** and **prov_terr**.
 
 ```{r}
 rcmp_news_pp <- rcmp_news_pp %>%
@@ -452,12 +456,14 @@ rcmp_news_pp <- rcmp_news_pp %>%
          prov_terr = region2)
 ```
 
-Now that we've fixed our issues with the province/territory data in our DataFrame, we can begin to explore the corpus. A great technique for getting to know the data in your corpus is to use *data visualization*. Combining standard data manipulation and data visualization techniques like counting and bar graphs, we can easily visualize some of the more macro-level patterns in our corpus (publication of news releases over time, by province/territory, etc.). To do this, we'll be using an R data visualization library called library(ggplot2). Since data often needs to be manipulated to some degree before visualization (e.g., counting the number of unique provinces/territories in the DataFrame, in order to create a bar chart visually representing the differences), we'll also be using more of library(stringr) and library(dplyr). Let's begin with a bar graph showing the total number of press releases in our corpus by province/territory. Note that to produce these graphs, we are going to use the theme aesthetics from library(hrbrthemes) and the default colour palette from library(fishualize), so you'll need to install these two libraries first before you can run the code.
+Now that we've fixed our issues with the province/territory data in our dataframe, we can begin to explore the corpus. A great technique for getting to know the data in your corpus is to use [data visualization](https://www.annualreviews.org/doi/abs/10.1146/annurev-soc-071312-145551). Combining standard data manipulation and data visualization techniques like counting and bar graphs, we can quickly visualize some of the more macro-level patterns in our corpus (publication of news releases over time, by province/territory, etc.). To do this, we'll be using a data visualization library called library(ggplot2). Since data often needs to be manipulated to some degree before visualization (e.g., counting the number of unique provinces/territories in our data in order to create a bar chart visually representing the differences), we'll also be using more of library(stringr) and library(dplyr). 
+
+Let's begin with a bar graph showing the total number of press releases in our corpus by province/territory. Note that to produce these graphs, we are going to use the theme aesthetics from library(hrbrthemes) and the default colour palette from library(fishualize). You'll need to install these two libraries first before you can run the code.
 
 ```{r}
-#install.packages("ggplot2")
 #install.packages("hrbrthemes")
 #install.packages("fishualize")
+#install.packages("ggplot2")
 library(ggplot2)
 ```
 
@@ -548,9 +554,16 @@ rcmp_news_pp %>%
 
 # Sampling and Outputting
 
-As noted at the outset, we are interested in analyzing not only the textual component of our RCMP news corpus, but the visual component as well. The first question we might ask then is how many of the news releases actually contain images? To calculate this, we can create a table with four columns: one that indicates the province/territory of the RCMP detachment, one of the indicates the total number of news releases in the corpus, one of that indicates the total number of news releases in the corpus containing images, and finally, one that contains the percentage score of press releases taht contain images (for each province/territory). We can create this table using a number of helpful functions from library(dplyr), including `filter()` (to take out British Columbia), `add_count()` (to count the total number of press releases and the number of press releases containing images), and `mutate()` (to calculate the percentage score of news releases containing images), among others.
+As noted at the outset, we are primarily interested in analyzing not only the textual component of our RCMP news corpus, but the visual component as well. The first question we might ask then is: how many of the news releases contain images? To calculate this, we can create a table with four columns: one that indicates the province/territory of the RCMP detachment, one of the indicates the total number of news releases in the corpus, one of that indicates the total number of news releases in the corpus containing images, and finally, one that contains the percentage score of press releases that contain images (for each province/territory). We can create this table using a number of helpful functions from library(dplyr), including `filter()` (to take out British Columbia), `add_count()` (to count the total number of press releases and the number of press releases containing images), and `mutate()` (to calculate the percentage score of news releases containing images), among others.
 
-```{r, eval=FALSE}
+```{r}
+#install.packages("paletteer")
+#install.packages("gt")
+library(paletteer)
+library(gt)
+```
+
+```{r}
 table1 <- rcmp_news_pp %>%
   filter(prov_terr != "British Columbia") %>%
   group_by(prov_terr) %>%
@@ -562,59 +575,15 @@ table1 <- rcmp_news_pp %>%
   select(prov_terr, total_press_releases, total_images, proportion) %>%
   arrange(desc(proportion)) %>%
   rename(`Province/Territory` = prov_terr,
-         `Total NRs` = total_press_releases,
-         `Total NRs w/ Images` = total_images,
-         `Percent NRs w/ Images` = proportion) %>%
+         `Total` = total_press_releases,
+         `Images` = total_images,
+         `Images %` = proportion) %>%
   ungroup()
-
-paged_table(table1)
-```
-
-These are very interesting results. But this is obviously much too large a corpus to qualitatively analyze, even if we only analyzed press releases that contained images. So we want to do now is sample the larger corpus, creating a subset that we can reasonably analyze. Although there are many ways one could do this, we are going to use a crude and simple methodology. This involves creating a dictionary of keywords, searching for the presence of these key words in the text of each news release, and including any news release that contains one or more of our keywords, and excluding all of those that contain none of our keywords. Since we are interested in textual and visual representations of alleged drug crimes, we are going to create a dictionary of drug-related keywords. Each word in the string is separated by the "|" symbol, which stands for "or". This is necessary as it will tell our string detection algorithm to search for the presence of *any* of the words in dictionary, rather than the presence of all of them. Note that we are writing the words in lower case and without any pluralization. This is because...
-
-
-```{r, eval=FALSE}
-table2 <- rcmp_news_pp %>%
-  filter(prov_terr != "British Columbia") %>%
-  filter(!is.na(image_url),
-         !is.na(full_text)) %>%
-  group_by(prov_terr, image_url) %>%
-  mutate(full_text = str_to_lower(full_text)) %>%
-  count(tf = str_detect(full_text, my_pattern2)) %>%
-  group_by(prov_terr, tf) %>%
-  summarize(sum = sum(n)) %>%
-  pivot_wider(names_from = tf, values_from = sum) %>%
-  mutate(`FALSE` = `FALSE` + `TRUE`) %>%
-  rename(`Total NRs w/ Images 2` = `TRUE`,
-         `Total NRs 2` = `FALSE`,
-         `Province/Territory` = prov_terr) %>%
-  mutate(`Percent NRs w/ Images 2` = round(`Total NRs w/ Images 2`/`Total NRs 2`*100, 2)) %>%
-  arrange(desc(`Percent NRs w/ Images 2`)) %>%
-  ungroup()
-
-paged_table(table2)
-```
-
-To inspect the results of these two tables more fully, we can put them into the same table. It can also be useful to represent the results of a table as a heatmap...
-
-```{r}
-#install.packages("paletteer")
-#install.packages("gt")
-library(paletteer)
-library(gt)
-```
-
-```{r, eval=FALSE}
-table3 <- table1 %>%
-  left_join(table2, by = c("Province/Territory" = "Province/Territory")) %>%
-  rename(` ` = "Province/Territory")
 
 table1 %>%
   gt() %>%
-  #tab_spanner(label = "",
-  #            columns = c(`Total NRs`, `Total NRs w/ Images`, `Percent NRs w/ Images`)) %>%
   data_color(
-    columns = c(`Total NRs`, `Total NRs w/ Images`, `Percent NRs w/ Images`),
+    columns = c(`Total`, `Images`, `Images %`),
     colors = scales::col_numeric(
       paletteer::paletteer_d(
         palette = "ggsci::red_material")
@@ -624,84 +593,48 @@ table1 %>%
   )
 ```
 
-The subset corpus of 997 news releases (containing images) is a much more reasonably sized corpus to analyze. Although we may end up wanting to subset this corpus further, it is at very least a good place to start. What we want to do now is write some code that will: 1) create a DataFrame that contains only the values of our subset corpus; and 2) download each of the images and text data for the news releases. We can use metadata from the DataFrame to automatically name each of the images and corresponding text files, and put them into the same folder on our computer. 
+These are very interesting results. But this is obviously much too large a corpus to qualitatively analyze, even if we only analyzed press releases that contained images. To resolve this problem, we can sample the larger corpus, creating a subset for analysis. There are many ways to do this. For example, we could create a dictionary of keywords, searching for the presence of these key words in the text of each news release, and including only news release that contains one or more of our keywords, and excluding all of those that contain none of our keywords. For this illustration, we are going to extract what's called a [stratified random sample](https://www150.statcan.gc.ca/n1/edu/power-pouvoir/ch13/prob/5214899-eng.htm).
 
-```{r}
+```{r message=FALSE, warning=FALSE}
 #install.packages("splitstackshape")
 library(splitstackshape)
 ```
 
-```{r, eval=FALSE}
-#image_meta_data <- rcmp_news_pp %>% 
-=======
-image_meta_data <- rcmp_news_pp %>% 
->>>>>>> dc8e44b659ebb0487aed562f7514dc12c22a250d
+```{r}
+image_meta_data <- rcmp_news_pp %>%
   ungroup() %>%
   filter(prov_terr != "British Columbia") %>%
   filter(!is.na(image_url)) %>%
-  #mutate(full_text = str_to_lower(full_text)) %>%
-  #filter(str_detect(full_text, my_pattern)) %>%
   mutate(date_published = str_remove_all(pattern= " (\\d{2})(\\:)(\\d{2})(\\:)(\\d{2})", date_published)) %>%
   mutate(date_published = as.Date(lubridate::ymd(date_published))) %>%
   mutate(year = as.numeric(str_extract(date_published, "\\d{4}")))
 
-#image_meta_data <- stratified(image_meta_data, c("prov_terr", "year"), .15)
+image_meta_data <- stratified(image_meta_data, c("prov_terr", "year"), .15)
 
+nrow(image_meta_data)
+```
 
+The subset corpus of 497 news releases (containing images) is a much more reasonably sized corpus to analyze. Although we may end up wanting to subset this corpus further, it is at very least a good place to start. 
+
+What we will do now is write some code that will take this subset corpus (containig 497 news releses with images) and download each of the images and text data for the news releases. We can use metadata from the dataframe to automatically name each of the images and corresponding text files, and put them into the same folder on our hard drive. 
+
+First, let's download the images.
+
+```{r, eval=FALSE}
+#options(timeout=500) # if the images are taking a while to load, may want to change timeout length
 
 image_urls <- image_meta_data %>% select(image_url)
 
-image_urls1 <- slice(image_urls, 1:250)
-image_meta_data1 <- slice(image_meta_data, 1:250)
-
-image_urls2 <- slice(image_urls, 251:497)
-image_meta_data2 <- slice(image_meta_data, 251:497)
-
-image_urls3 <- slice(image_urls, 501:750)
-#image_meta_data3 <- slice(image_meta_data, 501:750)
-
-image_urls4 <- slice(image_urls, 751:997)
-#image_meta_data4 <- slice(image_meta_data, 751:997)
-```
-
-Now let's download the images.
-
-```{r, eval=FALSE}
-options(timeout=500)
-
-for (i in image_urls1){
+for (i in image_urls){
   
-  numbers <- 1:250
+  numbers <- 1:497
   
-  download.file(i, paste("/Volumes/ajl_external/rcmp-news-images/rcmp-drug-crimes-stratified-random/", image_meta_data1$prov_terr, "_RCMP_", image_meta_data1$date_published, "_", numbers, ".jpg", sep = ""))
+  download.file(i, paste("<ABSOLUTE PATH TO FOLDER>", image_meta_data$prov_terr, "_RCMP_", image_meta_data$date_published, "_", numbers, ".jpg", sep = ""))
   
-}
-
-for (i in image_urls2){
-  
-  numbers <- 251:497
-  
-  download.file(i, paste("/Volumes/ajl_external/rcmp-news-images/rcmp-drug-crimes-stratified-random/", image_meta_data2$prov_terr, "_RCMP_", image_meta_data2$date_published, "_", numbers, ".jpg", sep = ""))
-  
-}
-
-for (i in image_urls3){
-  
-  numbers <- 501:750
-  
-  download.file(i, paste("/Volumes/ajl_external/rcmp-news-images/rcmp-drug-crimes-corpus/", image_meta_data3$prov_terr, "_RCMP_", image_meta_data3$date_published, "_", numbers, ".jpg", sep = ""))
-  
-}
-
-for (i in image_urls4){
-  
-  numbers <- 751:997
-  
-  download.file(i, paste("/Volumes/ajl_external/rcmp-news-images/rcmp-drug-crimes-corpus/", image_meta_data4$prov_terr, "_RCMP_", image_meta_data4$date_published, "_", numbers, ".jpg", sep = ""))
 }
 ```
 
-Finally, let's download the text files for each news release.
+Next, let's download the text files for each news release.
 
 ```{r, eval=FALSE}
 subset_corpus <- rcmp_news %>% 
@@ -728,7 +661,7 @@ subset_corpus <- image_meta_data %>%
   mutate(text = paste(date_published2, headline_text, headline_url, image_url, prov_terr2, full_text)) %>%
   mutate(doc_names = paste(prov_terr, "_RCMP_", date_published, "_", doc_id, sep = ""))
 
-setwd("/Volumes/ajl_external/rcmp-news-images/rcmp-drug-crimes-stratified-random/")
+setwd("<ABSOLUTE PATH TO FOLDER>")
 
 subset_corpus %>%
   select(doc_names, text) %>%
@@ -736,7 +669,7 @@ subset_corpus %>%
   do(write_csv(., paste0(unique(.$doc_names), ".txt", sep = ""), col_names = FALSE))
 ```
 
-![Folder containing the 997 images and text files from our subset corpus](images/download_results1.png)
+![Folder containing the 497 images and text files from our subset corpus](images/download_results1.png)
 
 ![Example text file and image in the folder](images/download_results2.png)
 
