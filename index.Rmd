@@ -30,11 +30,15 @@ output:
     code_folding: false
 ---
 
-# Defining the Problem
-
 # Collecting
 
 ### Website Recon
+
+The first major step in conducting any web scrape is page exploration/inspection. What the researcher does at this stage is explore the content and structure of the pages they are interested in. The goal is to, first, find the various page elements that one wishes to collect. In this case, we are interested in collecting specific data points from thousands of RCMP news releases, including the title of each news release, date, location of RCMP detachment, and the main text of the news release. 
+
+The second goal is to come up with an [algorithmic solution](https://link.springer.com/article/10.1007/s11135-021-01164-0#:~:text=By%20adopting%20algorithmic%20thinking%20in,discussions%20about%20the%20legality%20and) or strategy for collecting this information. A key part of this second step is to carefully examine the source code of the website in order to determine what tools or libraries will be necessary to execute the scrape. While simpler websites can be scraped using an R package like [library(rvest)](https://cran.r-project.org/web/packages/rvest/index.html), more sophisticated websites may require that the researcher use an additional set of tools such as [library(RSelenium)](https://cran.r-project.org/web/packages/RSelenium/index.html). 
+
+Another key part of constructing an algorithmic solution is to determine whether the information can (or should) be collected in one or multiple stages (where each stage represents a different script). We typically conduct our web scrapes in two stages: the index scrape and the contents scrape.
 
 ![](images/scrape_diagram.png)
 
@@ -170,7 +174,7 @@ index <- read_csv("rcmp-news-index-scrape.csv")
 
 paged_table(index)
 ```
-### Contents Scrape I (text)
+### Contents Scrape
 
 Using the results of index scrape, we can conduct our contents scrape. This will involve visiting each url in our index (headline_url) and grabbing the content we want from each page. We're going to grab three things from each: the headline url (in order to merge the results of our index and contents scrapes), the full_text of the article, and the link to any images contained in the news release (if there are any). Same as we did with the index scrape, we'll start by creating a csv file on our local hard drive with named columns that correspond to the information we're going to collect. 
 
@@ -246,7 +250,7 @@ write_csv(combined_df, "rcmp-news-df.csv")
 rcmp_news <- read_csv("rcmp-news-df.csv")
 ```
 
-Let's take a look at the results our DataFrame so far. For this we can use the `head()` function from base R to view only the first 6 rows of each variable.
+Let's take a look at the results our DataFrame so far. We'll look at the first two rows from each variable.
 
 ```{r}
 paged_table(rcmp_news, options = list(rows.print = 2))
@@ -268,7 +272,7 @@ rcmp_news_pp <- rcmp_news %>%
 # first two lines for display only, can ignore
 rcmp_news_pp %>%
   mutate(full_text = stringr::str_extract(full_text, ".*?[a-z0-9][.?!](?= )")) %>%
-  mutate(full_text = stringr::str_replace(full_text, "\\.", ". [...]")) %>%
+  mutate(full_text = stringr::str_replace(full_text, "\\.$", ". [...]")) %>%
   paged_table(options = list(max.print = 200)) #inspect the results, again using the head() function, but this time let's inspect the first 200 results
 ```
 Inspecting the first 200 results, we see that it mostly worked, until about page 14. On the second row of page 14, in the **region2** column, we can see that "Ontario Media advisory" has been entered where we expected the result to be just "Ontario". Flipping through more of the pages, we see a similar labeling issue on page 18 ("Ontario NCR", "Guysborough County") and on page 19 ("Manitoba Statement"). At this stage we should ask: how many of the **region2** values contain information other than just the name of the province/territory? The easiest way to do this is to use the `count()` function from library(dplyr) to count the total number of times that each unique entry appears in the **region2** variable. From here we can print the results of our count in a table that we can manually inspect.
@@ -577,20 +581,49 @@ table1 <- rcmp_news_pp %>%
   rename(`Province/Territory` = prov_terr,
          `Total` = total_press_releases,
          `Images` = total_images,
-         `Images %` = proportion) %>%
+         `Percent` = proportion) %>%
   ungroup()
 
 table1 %>%
   gt() %>%
   data_color(
-    columns = c(`Total`, `Images`, `Images %`),
+    columns = c(`Total`, `Images`, `Percent`),
     colors = scales::col_numeric(
       paletteer::paletteer_d(
         palette = "ggsci::red_material")
         %>% as.character(),
       domain = NULL
+    )
+  ) %>%
+  tab_style(
+    style = list(
+      cell_borders(
+      sides = "bottom",
+      color = "black",
+      weight = px(3)
+      ),
+      cell_text(weight = "bold")
+    ),
+    locations = list(
+      cells_column_labels(
+        columns = gt::everything()
+        )
       )
-  )
+    ) %>%
+  opt_table_font(
+     font = list(
+       google_font("Chivo"),
+       default_fonts()
+     )
+  ) %>%
+  tab_options(
+    column_labels.border.top.color = "transparent",
+    table.border.top.color = "transparent",
+    table.border.bottom.color = "transparent",
+    heading.align = "left",
+    data_row.padding = px(5)
+    )
+
 ```
 
 These are very interesting results. But this is obviously much too large a corpus to qualitatively analyze, even if we only analyzed press releases that contained images. To resolve this problem, we can sample the larger corpus, creating a subset for analysis. There are many ways to do this. For example, we could create a dictionary of keywords, searching for the presence of these key words in the text of each news release, and including only news release that contains one or more of our keywords, and excluding all of those that contain none of our keywords. For this illustration, we are going to extract what's called a [stratified random sample](https://www150.statcan.gc.ca/n1/edu/power-pouvoir/ch13/prob/5214899-eng.htm).
@@ -676,3 +709,73 @@ subset_corpus %>%
 # Analyzing
 
 # Findings, Discussion, and Conclusion
+
+```{r message=FALSE, warning=FALSE}
+qual_freqs <- read_csv("qual_coding_frequencies.csv")
+
+qual_freqs %>%
+  arrange(desc(References)) %>%
+  gt() %>%
+  tab_style(
+    style = list(
+      cell_borders(
+      sides = "bottom",
+      color = "black",
+      weight = px(3)
+      ),
+      cell_text(weight = "bold")
+    ),
+    locations = list(
+      cells_column_labels(
+        columns = gt::everything()
+        )
+      )
+    ) %>%
+  opt_table_font(
+     font = list(
+       google_font("Chivo"),
+       default_fonts()
+     )
+  ) %>%
+  tab_options(
+    column_labels.border.top.color = "transparent",
+    table.border.top.color = "transparent",
+    table.border.bottom.color = "transparent",
+    heading.align = "left",
+    data_row.padding = px(5)
+    )
+```
+
+### Code 1: Identification
+
+![Identification example 1](images/identification/Alberta_RCMP_2018-07-16_341.jpg)
+
+![Identification example 2](images/identification/Manitoba_RCMP_2019-07-26_245.jpg)
+
+![Identification example 3](images/identification/New Brunswick_RCMP_2019-12-30_181.jpg)
+
+### Code 2: Spoils of War
+
+![Spoils of war example 1](images/spoils_of_war/Nova Scotia_RCMP_2020-08-06_70.jpg)
+
+![Spoils of war example 2](images/spoils_of_war/Ontario_RCMP_2019-09-16_270.jpg)
+
+![Spoils of war example 3](images/spoils_of_war/Prince Edward Island_RCMP_2017-03-02_448.jpg)
+
+![Spoils of war example 4](images/spoils_of_war/Yukon_RCMP_2018-08-16_406.jpg)
+
+### Code 3: Vehicle
+
+![Vehicle example 1](images/vehicle/Alberta_RCMP_2018-04-07_357.jpg)
+
+![Vehicle example 2](images/vehicle/Manitoba_RCMP_2020-03-16_90.jpg)
+
+![Vehicle example 3](images/vehicle/Prince Edward Island_RCMP_2018-08-22_313.jpg)
+
+### Code 4: Line of Duty
+
+![Line of duty example 1](images/line_of_duty/Newfoundland and Labrador_RCMP_2020-09-09_118.jpg)
+
+![Line of duty example 2](images/line_of_duty/Yukon_RCMP_2019-08-02_170.jpg)
+
+
