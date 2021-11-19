@@ -763,7 +763,7 @@ subset_corpus <- image_meta_data %>%
   mutate(text = paste(date_published2, headline_text, headline_url, image_url, prov_terr2, full_text)) %>%
   mutate(doc_names = paste(prov_terr, "_RCMP_", date_published, "_", doc_id, sep = ""))
 
-setwd("<ABSOLUTE PATH TO FOLDER>")
+setwd("<REPLACE WITH ABSOLUTE PATH TO FOLDER>")
 
 subset_corpus %>%
   select(doc_names, text) %>%
