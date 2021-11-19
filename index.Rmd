@@ -179,17 +179,15 @@ scrape_page <- function(page_num = 0) {
     html_text(trim = TRUE) %>%
     as.numeric() %>%
     -(1)
+  
+  Sys.sleep(20) #20 second delay as per RCMP's robots.txt directives
 
   max_page_num <- max_page
-
-  Sys.sleep(sample(seq(3, 10, by=1), 1))
 
   # recur
   if ((page_num + 1) <= max_page_num) {
     scrape_page(page_num = page_num + 1)
   }
-  
-  Sys.sleep(20) #20 second delay as per RCMP's robots.txt directives
 
 }
 
