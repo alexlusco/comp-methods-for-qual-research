@@ -1,7 +1,7 @@
 ---
 title: "Jumpstarting the Justice Disciplines"
 description: |
-  This article supplement provides all of the code necessary to reproduce the case study illustration in *Jumpstarting the Justice Disciplines: A Computational-Qualitative Approach to Collecting and Analyzing Text and Image Data in Criminology and Criminal Justice Studies* (forthcoming). To boost the pedagogical value of this resource, we have provided detailed explanations and commentaries throughout each step.
+  This article supplement provides all of the code necessary to reproduce the case study illustration in *Jumpstarting the Justice Disciplines: A Computational-Qualitative Approach to Collecting and Analyzing Text and Image Data in Criminology and Criminal Justice Studies* (conditional acceptance). To boost the pedagogical value of this resource, we have provided detailed explanations and commentaries throughout each step.
 author:
   - first_name: "Alex"
     last_name: "Luscombe"
@@ -53,9 +53,11 @@ The first step in designing a project that incorporates computational methods â€
 
 ## Step 2: Collecting
 
-All data for this study were collected via web scraping. The first major step in conducting a web scrape is page exploration/inspection. What the researcher does at this stage is explore the content and structure of the pages they are interested in. The goal is to, first, find the various page elements that one wishes to collect. In this case, as we explain in the article, we are interested in collecting specific data points from thousands of RCMP news releases, including the title of each news release, date, location of RCMP detachment, the main text of the news release, and links to any images contained in the news release. 
+All data for this study were collected via web scraping. The first major step in conducting a web scrape is page exploration/inspection. What the researcher does at this stage is explore the content and structure of the pages they are interested in. The goal is to, first, find the various page elements that one wishes to collect. In this case, as we explain in the article, we are interested in collecting specific data points from thousands of RCMP news releases, including the title of each news release, date, location of RCMP detachment, the main text of the news release, and links to any images contained in the news release.
 
-The second goal is to come up with an algorithmic solution (URL REMOVED FOR PEER REVIEW) or strategy for collecting this information. A key part of this second step is to carefully examine the source code of the website to determine what tools or libraries will be necessary to execute the scrape. While simpler websites can be scraped using an R package like [library(rvest)](https://cran.r-project.org/web/packages/rvest/index.html), more sophisticated websites may require that the researcher use an additional set of tools such as [library(RSelenium)](https://cran.r-project.org/web/packages/RSelenium/index.html).
+The second goal is to come up with an [algorithmic solution](https://link-springer-com.myaccess.library.utoronto.ca/article/10.1007/s11135-021-01164-0) or strategy for collecting this information. A key part of this second step is to carefully examine the source code of the website to determine what tools or libraries will be necessary to execute the scrape. While simpler websites can be scraped using an R package like [library(rvest)](https://cran.r-project.org/web/packages/rvest/index.html), more sophisticated websites may require that the researcher use an additional set of tools such as [library(RSelenium)](https://cran.r-project.org/web/packages/RSelenium/index.html).
+
+It is also important during exploration/inspection to consider the legal and ethical implications of the scrape, which includes reviewing the website's terms and conditions of use and 'robots exclusion protocol' or [robots.txt](https://en.wikipedia.org/wiki/Robots_exclusion_standard). A website's robots.txt directives can be obtained by adding /robots.txt to the root directory. The robots.txt for the RCMP's website is available [here](https://www.rcmp-grc.gc.ca/robots.txt). The legal and ethical dimensions of web scraping are discussed more fully in the article.
 
 Another key part of constructing an algorithmic solution is to determine whether the information can (or should) be collected in one or multiple stages, where each stage represents a different script. We typically conduct our web scrapes in two stages: the index scrape and the contents scrape. 
 
@@ -109,7 +111,7 @@ Next, we'll write the script for our index scraping algorithm, which will gather
 
 To locate the information we want, which is embedded in the RCMP website's [HyperText Markup Language or HTML code](https://en.wikipedia.org/wiki/HTML), we'll be specifying each of the HTML elements that contains each data point (`headline_url`, `headline_text`, `date_published`, `metadata_text`, and `page_url`). 
 
-As we've written about elsewhere (URL REMOVED FOR PEER REVIEW), obtaining these elements is more an art than a science. There are [developer tools](https://developer.mozilla.org/en-US/docs/Learn/Common_questions/What_are_browser_developer_tools) built into every browser to help obtain them. Another popular tool is Andrew Cantino and Kyle Maxwell's incredibly efficient and user-friendly Chrome browser extension "[selector gadget](https://selectorgadget.com/)". 
+As we've written about [elsewhere](https://link-springer-com.myaccess.library.utoronto.ca/article/10.1007/s11135-021-01164-0), obtaining these elements is more an art than a science. There are [developer tools](https://developer.mozilla.org/en-US/docs/Learn/Common_questions/What_are_browser_developer_tools) built into every browser to help obtain them. Another popular tool is Andrew Cantino and Kyle Maxwell's incredibly efficient and user-friendly Chrome browser extension "[selector gadget](https://selectorgadget.com/)". 
 
 It is vitally important when web scraping to always insert a pause into the code, typically a minimum of 3 seconds, which can be achieved using the base R function `Sys.sleep()`. Pausing the loop after each execution (since there are 13,637 URLs, it will be executed 13,637 times) prevents the web scrape from placing undue stress on a website server.
 
