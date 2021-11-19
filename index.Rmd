@@ -1,27 +1,27 @@
 ---
-title: "Computational Methods for Qualitative Research in Criminology and Criminal Justice Studies"
+title: "Jumpstarting the Justice Disciplines"
 description: |
-  This article supplement, intended as a pedagogical tool, provides all of the code necessary to reproduce the case study illustration in *Jumpstartitarting the Justice Disciplines: Computational Methods for Qualitative Research in Criminology and Criminal Justice Studies* (work in progress). To boost the pedagogical value of this resource, we have provided detailed explanations and commentaries throughout each step.
+  This article supplement provides all of the code necessary to reproduce the case study illustration in *Jumpstarting the Justice Disciplines: A Computational-Qualitative Approach to Collecting and Analyzing Text and Image Data in Criminology and Criminal Justice Studies* (forthcoming). To boost the pedagogical value of this resource, we have provided detailed explanations and commentaries throughout each step.
 author:
   - first_name: "Alex"
     last_name: "Luscombe"
-    url: https://www.alexluscombe.ca
+    url:
     affiliation: University of Toronto
     affiliation_url: 
     orcid_id: 0000-0002-3052-5401
   - first_name: "Kevin"
     last_name: "Walby"
-    url: https://www.uwinnipeg.ca/caij/about/index.html
+    url: 
     affiliation: University of Winnipeg
     affiliation_url: 
     orcid_id: 0000-0002-5107-2309
   - first_name: "Jamie"
     last_name: "Duncan"
-    url: https://jamieduncan.me/
+    url: 
     affiliation: University of Toronto
     affiliation_url: 
     orcid_id: 0000-0002-5456-6486
-date: "Last updated `r Sys.Date()`"
+date: "`r Sys.Date()`"
 output: 
   distill::distill_article:
     toc: true
@@ -43,23 +43,19 @@ Although not always free, there are also many courses available online through w
 
 # A Framework for Using Computational Methods in Qualitative Research
 
-The rest of this supplement follows the six stages of the framework for using computational methods in qualitative research developed in the article. These stages are: (1) defining the problem; (2) collecting; (3) parsing, exploring, and cleaning; (4) sampling and outputting; (5) analyzing; and (6) findings and discussion. As we explain below, the bulk of material in this supplement is focused on steps 2, 3, and 4, as these are the steps that involved R programming. More in-depth discussions of the remaining steps 1, 5, and 6 can be found in the article.
+The rest of this supplement follows the six stages of the framework for using computational methods in qualitative research developed in the article. These stages are: (1) defining the problem; (2) collecting; (3) parsing, exploring, and cleaning; (4) sampling and outputting; (5) analyzing; and (6) findings and discussion. The bulk of material in this supplement is focused on steps 2, 3, and 4, as these are the steps that involved R programming. More in-depth discussions of the remaining steps 1, 5, and 6 can be found in the article.
 
-# Step 1: Defining the Problem
+## Step 1: Defining the Problem
 
 The first step in designing a project that incorporates computational methods – as with any research project – is to determine a research question. For the sake of brevity, here we only restate the two overarching research questions that guided our collection and analysis of RCMP news releases. We asked: 
 
 > How do the Royal Canadian Mounted Police (RCMP) visually represent their policing work in Canada? More specifically, what ‘work’ do the images included in RCMP press releases do with respect to conveying a message about policing and social control? 
 
-A more detailed discussion of this first step, including the literature review, can be found in the article. The remainder of this supplement will focus on the steps that involved R programming: collecting; parsing (step 2), exploring, and cleaning (step 3); and sampling and outputting (step 4). To analyze our data (step 5), we took a qualitative approach and relied on the qualitative research software NVivo (which will no doubt be familiar to most, if not all, qualitative researchers). The bulk of the final phase, findings and discussion (step 6), can also be found in the article and is not reproduced at length in this supplement. We do, however, provide several example images from our analysis in the supplement.
+## Step 2: Collecting
 
-# Step 2: Collecting
+All data for this study were collected via web scraping. The first major step in conducting a web scrape is page exploration/inspection. What the researcher does at this stage is explore the content and structure of the pages they are interested in. The goal is to, first, find the various page elements that one wishes to collect. In this case, as we explain in the article, we are interested in collecting specific data points from thousands of RCMP news releases, including the title of each news release, date, location of RCMP detachment, the main text of the news release, and links to any images contained in the news release. 
 
-### Website Recon
-
-The first major step in conducting a web scrape is page exploration/inspection. What the researcher does at this stage is explore the content and structure of the pages they are interested in. The goal is to, first, find the various page elements that one wishes to collect. In this case, as we explain in the article, we are interested in collecting specific data points from thousands of RCMP news releases, including the title of each news release, date, location of RCMP detachment, the main text of the news release, and links to any images contained in the news release. 
-
-The second goal is to come up with an [algorithmic solution](https://link.springer.com/article/10.1007/s11135-021-01164-0#:~:text=By%20adopting%20algorithmic%20thinking%20in,discussions%20about%20the%20legality%20and) or strategy for collecting this information. A key part of this second step is to carefully examine the source code of the website to determine what tools or libraries will be necessary to execute the scrape. While simpler websites can be scraped using an R package like [library(rvest)](https://cran.r-project.org/web/packages/rvest/index.html), more sophisticated websites may require that the researcher use an additional set of tools such as [library(RSelenium)](https://cran.r-project.org/web/packages/RSelenium/index.html).
+The second goal is to come up with an algorithmic solution (URL REMOVED FOR PEER REVIEW) or strategy for collecting this information. A key part of this second step is to carefully examine the source code of the website to determine what tools or libraries will be necessary to execute the scrape. While simpler websites can be scraped using an R package like [library(rvest)](https://cran.r-project.org/web/packages/rvest/index.html), more sophisticated websites may require that the researcher use an additional set of tools such as [library(RSelenium)](https://cran.r-project.org/web/packages/RSelenium/index.html).
 
 Another key part of constructing an algorithmic solution is to determine whether the information can (or should) be collected in one or multiple stages, where each stage represents a different script. We typically conduct our web scrapes in two stages: the index scrape and the contents scrape. 
 
@@ -109,9 +105,11 @@ create_data <- function(
 write_csv(create_data() %>% drop_na(), filename, append = TRUE, col_names = TRUE)
 ```
 
-Next, we'll write the script for our index scraping algorithm, which will gather the data from the RCMP's website and populate the CSV file we created in the last chunk of code. (Assuming the last chunk of code ran successfully, you should have a CSV file titled "rcmp-news-index-scrape.csv" in your working directory.) To conduct our index scrape, we'll need to install/load an additional library -- [library(rvest)](https://cran.r-project.org/web/packages/rvest/index.html) -- that will be used to get and parse the information we want from the news release section of the RCMP's website. From library(rvest), we will be using six functions: `read_html()`, `html_node()`, `html_nodes()`, `html_attr()`, `html_text()`, and `url_absolute()`.
+Next, we'll write the script for our index scraping algorithm, which will gather the data from the RCMP's website and populate the CSV file we created in the last chunk of code. (Assuming the last chunk of code ran successfully, you should have a CSV file titled `"rcmp-news-index-scrape.csv"` in your working directory.) To conduct our index scrape, we'll need to install/load an additional library -- [library(rvest)](https://cran.r-project.org/web/packages/rvest/index.html) -- that will be used to get and parse the information we want from the news release section of the RCMP's website. From library(rvest), we will be using six functions: `read_html()`, `html_node()`, `html_nodes()`, `html_attr()`, `html_text()`, and `url_absolute()`.
 
-To locate the information we want, which is embedded in the RCMP website's [HyperText Markup Language or HTML code](https://en.wikipedia.org/wiki/HTML), we'll be specifying each of the HTML elements that contains each data point (`headline_url`, `headline_text`, `date_published`, `metadata_text`, and `page_url`). As we've written about [elsewhere](https://link.springer.com/article/10.1007/s11135-021-01164-0#:~:text=By%20adopting%20algorithmic%20thinking%20in,discussions%20about%20the%20legality%20and), obtaining these elements is more an art than a science. There are [developer tools](https://developer.mozilla.org/en-US/docs/Learn/Common_questions/What_are_browser_developer_tools) built into every browser to help obtain them. Another popular tool is Andrew Cantino and Kyle Maxwell's incredibly efficient and user-friendly Chrome browser extension "[selector gadget](https://selectorgadget.com/)". 
+To locate the information we want, which is embedded in the RCMP website's [HyperText Markup Language or HTML code](https://en.wikipedia.org/wiki/HTML), we'll be specifying each of the HTML elements that contains each data point (`headline_url`, `headline_text`, `date_published`, `metadata_text`, and `page_url`). 
+
+As we've written about elsewhere (URL REMOVED FOR PEER REVIEW), obtaining these elements is more an art than a science. There are [developer tools](https://developer.mozilla.org/en-US/docs/Learn/Common_questions/What_are_browser_developer_tools) built into every browser to help obtain them. Another popular tool is Andrew Cantino and Kyle Maxwell's incredibly efficient and user-friendly Chrome browser extension "[selector gadget](https://selectorgadget.com/)". 
 
 It is vitally important when web scraping to always insert a pause into the code, typically a minimum of 3 seconds, which can be achieved using the base R function `Sys.sleep()`. Pausing the loop after each execution (since there are 13,637 URLs, it will be executed 13,637 times) prevents the web scrape from placing undue stress on a website server.
 
@@ -188,6 +186,8 @@ scrape_page <- function(page_num = 0) {
   if ((page_num + 1) <= max_page_num) {
     scrape_page(page_num = page_num + 1)
   }
+  
+  Sys.sleep(20) #20 second delay as per RCMP's robots.txt directives
 
 }
 
@@ -195,7 +195,7 @@ scrape_page <- function(page_num = 0) {
 scrape_page()
 ```
 
-Once our index scrape is complete, we can (must!) inspect the results before proceeding any further. To do this, we'll read our CSV file into R using library(readr)'s `read_csv()` function. To print and inspect the results, we'll use the ```paged_table()``` function from [library(rmarkdown)](https://cran.r-project.org/web/packages/rmarkdown/index.html).
+Once our index scrape is complete, we can (must!) inspect the results before proceeding any further. To do this, we'll read our CSV file into R using the `read_csv()` function from library(readr). To print and inspect the results, we'll use the `paged_table()` function from [library(rmarkdown)](https://cran.r-project.org/web/packages/rmarkdown/index.html).
 
 ```{r}
 #install.packages("rmarkdown")
@@ -206,13 +206,21 @@ library(rmarkdown)
 index <- read_csv("rcmp-news-index-scrape.csv")
 
 paged_table(index)
+
+nrow(index)
 ```
 
-Using the contents of the `headline_url` column, which are the unique URLs for each of the 13,637 news releases published on the RCMP's website, we can conduct our contents scrape. What we'll be doing in the contents scrape is visiting each of the 13,367 links in the `headline_url` column and obtaining further information from each page, in particular the full text of the article and any images contained within it. To keep things simple, we are only going to take the first image from each page in the event that there are more than one image. ([Click here](https://www.rcmp-grc.gc.ca/en/news/2020/north-battleford-rcmp-execute-two-search-warrants-leading-significant-drugs-and-weapons) for an example of one of the pages we'll be scraping. You could also copy and paste any of the URLs in the `headline_url` column into your browser.)
+Using the contents of the `headline_url` column, which are the unique URLs for each of the 13,637 news releases published on the RCMP's website, we can conduct our contents scrape. What we'll be doing in the contents scrape is visiting each of the 13,367 links in the `headline_url` column and obtaining further information from each page, in particular the full text of the article and any images contained within it. 
+
+To keep things simple, we are only going to take the first image from each page in the event that there are more than one image. ([Click here](https://www.rcmp-grc.gc.ca/en/news/2020/north-battleford-rcmp-execute-two-search-warrants-leading-significant-drugs-and-weapons) for an example of one of the pages we'll be scraping. You could also copy and paste any of the URLs in the `headline_url` column into your browser.)
 
 ### Contents Scrape
 
-Like we did above, we'll begin by writing a CSV file to our local drive with named columns that correspond to the information we're going to collect. We're going to grab two data points from each of the links: the full text of the article (we'll name this variable `full_text` in the CSV file) and any images contained in the news release, if there are any (`image_url`). (Note that we are not grabbing the image itself at this point, but rather are scraping the URL for the image, which we will use in subsequent steps to download each image.) Additionally, we're going to save the page url (`headline_url`) for each article. Although this information is redundant, as we already collected it in the index scrape, we'll need it to merge the results of our index and contents scrape.
+Like we did above, we'll begin by writing a CSV file to our local drive with named columns that correspond to the information we're going to collect. We're going to grab two data points from each of the links: the full text of the article (we'll name this variable `full_text` in the CSV file) and any images contained in the news release, if there are any (`image_url`). 
+
+(Note that we are not grabbing the image itself at this point, but rather are scraping the URL for the image, which we will use in subsequent steps to download each image.) 
+
+Additionally, we're going to save the page url (`headline_url`) for each article. Although this information is redundant, as we already collected it in the index scrape, we'll need it to merge the results of our index and contents scrape.
 
 ```{r, eval=FALSE}
 filename <- 'rcmp-news-contents-scrape.csv'
@@ -233,7 +241,7 @@ create_data <- function(
 write_csv(create_data() %>% drop_na(), filename, append = TRUE, col_names = TRUE)
 ```
 
-And now we can write the code for our contents scrape. We'll use the `lapply()` function this time, which will apply our script to each element in a list (in this case, each of the 13,637 URLs in the `headline_url` column of our "rcmp-news-index-scrape.csv" file).
+And now we can write the code for our contents scrape. We'll use the `lapply()` function this time, which will apply our script to each element in a list (in this case, each of the 13,637 URLs in the `headline_url` column of our `"rcmp-news-index-scrape.csv"` file).
 
 ```{r eval=FALSE, message=FALSE, warning=FALSE}
 index_list <- as.list(index$headline_url)
@@ -260,7 +268,7 @@ lapply(index_list, function(i) {
   
   write_csv(page_data, filename, append = TRUE)
   
-  Sys.sleep(3)
+  Sys.sleep(20) #20 second delay as per RCMP's robots.txt directives
   
 })
 ```
@@ -278,7 +286,7 @@ combined_df <- contents_scrape %>% select(-headline_url) %>% bind_cols(index_scr
 write_csv(combined_df, "rcmp-news-df.csv")
 ```
 
-# Step 3: Parsing, Cleaning, and Exploring
+## Step 3: Parsing, Cleaning, and Exploring
 
 As we've been doing throughout, we'll start by reading in and inspecting the data. We'll look at just the first 10 rows from each variable.
 
@@ -287,10 +295,14 @@ As we've been doing throughout, we'll start by reading in and inspecting the dat
 
 rcmp_news <- read_csv("rcmp-news-df.csv")
 
-paged_table(rcmp_news, options = list(rows.print = 10))
+paged_table(rcmp_news, options = list(max.print = 10))
 ```
 
-Inspecting the `metadata_text` column, which contains redundant date information and region information, we can see that both the city/town/county and province/territory are grouped together and separated by a ",". For example, on the first row, we have "Iqaluit, Nunavut", and one the second row, we have "Dauphin, Manitoba". As it is going to be useful for our analysis to explore pattern in the data by province/territory, we will want to split the region variable so that we have two variables instead, one that contains the town/city/county information, and one that contains the province/territory information. We can also get rid of the date information, as we already have it (in a more desirable format) in our `date_published` column. We can achieve these results using the `separate()` function from library(tidyr). We're also going to install/load a new library at this point -- [library(dplyr)](https://cran.r-project.org/web/packages/dplyr/index.html) -- for the `select()` and `mutate()` functions. library(dplyr) is one of the most useful and well-known libraries in the tidyverse. We'll be using a number of other library(dplyr) functions further on in this supplement.
+Inspecting the `metadata_text` column, which contains redundant date information and region information, we can see that both the city/town/county and province/territory are grouped together and separated by a ",". For example, on the first row, we have "Iqaluit, Nunavut", and on the second row, we have "Dauphin, Manitoba". As it is going to be useful for our analysis to explore pattern in the data by province/territory, we will want to split the region variable so that we have two variables instead, one that contains the town/city/county information, and one that contains the province/territory information. 
+
+We can also get rid of the date information, as we already have it in a more desirable format in our `date_published` column. We can achieve these results using the `separate()` function from library(tidyr). 
+
+We're also going to install/load a new library at this point -- [library(dplyr)](https://cran.r-project.org/web/packages/dplyr/index.html) -- for the `select()` and `mutate()` functions. library(dplyr) is one of the most useful and well-known libraries in the [tidyverse](https://www.tidyverse.org/). We'll be using a number of other library(dplyr) functions further on.
 
 ```{r}
 #install.packges("dplyr")
@@ -305,7 +317,9 @@ rcmp_news_pp <- rcmp_news %>%
 
 paged_table(rcmp_news_pp, options = list(max.print = 200))
 ```
-Inspecting the results, we see that it *mostly* appears to have worked, until page 14. On the second row of page 14, in the `region2` column, we can see that "Ontario Media advisory" has been entered where we expected the result to be just "Ontario". Flipping through more of the pages, we see a similar labeling issue on page 18 ("Ontario NCR", "Guysborough County") and on page 19 ("Manitoba Statement"). At this stage we should ask: how many of the `region2` values contain information other than just the name of the province/territory? The easiest way to do this is to use the `count()` function from library(dplyr) to count the total number of times that each unique entry appears in `region2`. From here we can print the results of our count in a table that we can manually inspect.
+It *mostly* appears to have worked, until page 14. On the second row of page 14, in the `region2` column, we can see that "Ontario Media advisory" has been entered where we expected the result to be just "Ontario". We see a similar labeling issue on page 18 ("Ontario NCR", "Guysborough County") and on page 19 ("Manitoba Statement"). 
+
+At this stage we should ask: how many of the `region2` values contain information other than just the name of the province/territory? The easiest way to do this is to use the `count()` function from library(dplyr) to count the total number of times that each unique entry appears in `region2`. From here we can print the results of our count in a table that we can manually inspect.
 
 ```{r}
 rcmp_region_count <- rcmp_news_pp %>%
@@ -313,7 +327,11 @@ rcmp_region_count <- rcmp_news_pp %>%
   
 paged_table(rcmp_region_count)
 ```
-Paging through the elements in this table, we can see that there's many entries in the `region2` column that contain more or different information then the name of the province/territory, and on the last page of the table, page 14, we see that there are 24 news releases in our corpus where the `region2` value is `NA` (which just means it is a missing or null value). This brings us to our first major cleaning operation: fixing the entries in our `region2` variable so that it only contains information on the province/territory of the RCMP detachment authoring the news release. To resolve this issue, we can write a simple function to re-label each of the entries we want to re-label. (As this is quite a lengthy chunk of code, we have hidden it from view. Click "Show code" to view.)
+Unfortunately, there appears to be many entries in the `region2` column that contain more or different information than the name of the province/territory, and on the last page of the table, page 14, we see that there are 24 news releases in our corpus where the `region2` value is `NA` (which just means it is a missing or null value). 
+
+This brings us to our first major cleaning operation: fixing the entries in our `region2` variable so that it only contains information on the province/territory of the RCMP detachment authoring the news release. To resolve this issue, we can write a simple function to re-label each of the entries we want to re-label. 
+
+(As this is quite a lengthy chunk of code, we have hidden it from view. Click "Show code" to view.)
 
 ```{r code_folding=TRUE}
 recode_regions <- function(region) {
@@ -521,11 +539,11 @@ rcmp_news_pp %>%
   labs(x = "", y = "")
 ```
 
-Nova Scotia, New Brunswick, and Newfound and Labrador account for the majority of news releases in the data we gathered. The two largest provinces in Canada - Ontario and Quebec - account for the least. Here we can use some domain knowledge to interpret this: there are very few RCMP detachments in Ontario and Québec, as both have provincial police forces (Ontario Provincial Police and Sûreté du Québec) that absorb many of the police duties that would otherwise be contracted to the RCMP. This fits clearly with what we know about policing in Canada. What is less immediately clear is why British Columbia only has two entries. Domain knowledge can again help us make sense of this. We know that British Columbia has a strong RCMP presence, and unlike Ontario and Québec, does not have a provincial police force that acts in lieu of the RCMP. The same explanation that we applied to Ontario and Québec therefore won't apply to British Columbia. 
+Nova Scotia, New Brunswick, and Newfound and Labrador account for the majority of news releases in the data we gathered. The two largest provinces in Canada -- Ontario and Quebec -- account for the least. Here we can use some domain knowledge to interpret this: there are very few RCMP detachments in Ontario and Québec, as both have provincial police forces (Ontario Provincial Police and Sûreté du Québec) that absorb many of the police duties that would otherwise be contracted to the RCMP. This fits clearly with what we know about policing in Canada. What is less immediately clear is why British Columbia only has two entries. Domain knowledge can again help us make sense of this. We know that British Columbia has a strong RCMP presence, and unlike Ontario and Québec, does not have a provincial police force that acts in lieu of the RCMP. The same explanation that we applied to Ontario and Québec therefore won't apply to British Columbia. 
 
-A simple Google search reveals the answer: British Columbia RCMP appears to have [its own "newsroom"](https://bc-cb.rcmp-grc.gc.ca/ViewPage.action?siteNodeId=28&languageId=1&contentId=-1) separate from other RCMP detachments. Further inspection of this page reveals that not only are British Columbia RCMP news releases being published separately, but also that they appear to be deleting them on a monthly basis. In other words, we cannot simply conduct another scrape to obtain data from British Columbia's RCMP newsroom - the data we need is not publicly available and would need to be collected through some other means, such as an [Access to Information Request](https://atip-aiprp.apps.gc.ca/atip/welcome.do). 
+A simple Google search reveals the answer: British Columbia RCMP appears to have [its own "newsroom"](https://bc-cb.rcmp-grc.gc.ca/ViewPage.action?siteNodeId=28&languageId=1&contentId=-1) separate from other RCMP detachments. Further inspection of this page reveals that not only are British Columbia RCMP news releases being published separately, but also that they appear to be deleting them on a monthly basis. In other words, we cannot simply conduct another scrape to obtain data from British Columbia's RCMP newsroom -- the data we need is not publicly available and would need to be collected through some other means, such as an [Access to Information Request](https://atip-aiprp.apps.gc.ca/atip/welcome.do). 
 
-For this and subsequent analyses, we'll be excluding British Columbia using library(dplyr)'s `filter()` function.
+For this and subsequent analyses, we'll be excluding British Columbia using the `filter()` function library(dplyr).
 
 Next, let's look at the total proportion of news releases produced over time by province/territory. To calculate this, we are going to manipulate the `date` variable, removing information about day and time, to count the total number of news releases produced by each province/territory for each year-month combination (`2016-05`, `2016-06`, `2016-07`, etc.).
 
@@ -596,11 +614,11 @@ rcmp_news_pp %>%
   labs(x = "word count (log scale)", y = "")
 ```
 
-# Step 4: Sampling and Outputting
+## Step 4: Sampling and Outputting
 
 As we explain in the article, we are interested in analyzing not only the *written* dimension of our RCMP news corpus (which in fact we make very little of in this illustration), but the *visual* component as well. The first question we might ask then is: how many of the news releases contain images? 
 
-To get an answer to this question, we can create a table with four columns: one that indicates the province/territory of the RCMP detachment (`prov_terr`), one of the indicates the total number of news releases in the corpus (`total_press_releases`), one of that indicates the total number of news releases in the corpus containing images (`total_images`), and finally, one that contains the percentage score of press releases that contain images for each province/territory (`proportion`). 
+To get an answer to this question, we can create a table with four columns: one that indicates the province/territory of the RCMP detachment (`prov_terr`), one that indicates the total number of news releases in the corpus (`total_press_releases`), one that indicates the total number of news releases in the corpus containing images (`total_images`), and finally, one that contains the percentage score of press releases that contain images for each province/territory (`proportion`). 
 
 We can extract and manipulate the data we need for this table using a number of helpful functions from library(dplyr), including `filter()` (to take out British Columbia), `add_count()` (to count the total number of press releases and the number of press releases containing images), and `mutate()` (to calculate the percentage score of news releases containing images). To create the table itself, we'll be using [library(gt)](https://cran.r-project.org/web/packages/gt/index.html) (to make the table) and [library(paletteer)](https://cran.r-project.org/web/packages/paletteer/index.html) (to customize the colour aesthetics).
 
@@ -670,9 +688,9 @@ table1 %>%
 
 ```
 
-These are very interesting results. But this is obviously much too large a corpus to qualitatively analyze, even if we only analyzed press releases that contained images. One practical solution to this problem is to sample the larger corpus, creating a subset that we can analyze. As we explain in the article, there are many ways to do this. For example, we could create a [dictionary of keywords](https://cbail.github.io/SICSS_Dictionary-Based_Text_Analysis.html), searching for the presence of these key words in the text of each news release, and including only news release that contains one or more of our keywords, and excluding all of those that contain none of our keywords. 
+These are very interesting results. But this is obviously much too large a corpus to qualitatively analyze, even if we only analyzed press releases that contained images. One practical solution to this problem is to sample the larger corpus, creating a subset that we can analyze. As we explain in the article, there are many ways to do this. For example, we could create a [dictionary of keywords](https://cbail.github.io/SICSS_Dictionary-Based_Text_Analysis.html), searching for the presence of these keywords in the text of each news release, and including only news release that contains one or more of our keywords, and excluding all of those that contain none of our keywords. 
 
-For this illustration, we are going to extract what's called a [stratified random sample](https://www150.statcan.gc.ca/n1/edu/power-pouvoir/ch13/prob/5214899-eng.htm). One way to achieve stratified random sampling is to use a combination of library(dplyr)'s `group_by()` and `sample_n()` or `sample_frac()` functions. Here we are going to use [library(splitstackshape)](https://cran.r-project.org/web/packages/splitstackshape/index.html)'s very intuitive and easy to use `stratified()` function.
+For this illustration, we are going to extract what's called a [stratified random sample](https://www150.statcan.gc.ca/n1/edu/power-pouvoir/ch13/prob/5214899-eng.htm). One way to achieve stratified random sampling is to use a combination of the `group_by()` and `sample_n()` or `sample_frac()` functions from library(dplyr). Here we are going to use the very intuitive and easy to use `stratified()` function from [library(splitstackshape)](https://cran.r-project.org/web/packages/splitstackshape/index.html).
 
 ```{r message=FALSE, warning=FALSE}
 #install.packages("splitstackshape")
@@ -697,7 +715,7 @@ The subset corpus of 497 news releases (containing images) is a much more reason
 
 What we will do now is write some code that will take this sample of n=497 and download the image and text data for each news release. We can use metadata from the dataframe to meaningfully name each of the images and corresponding text files, and put them into the same folder on our local drive (actually, we put ours onto an external hard-drive). 
 
-First, we'll download the images. To run this chunk of code, you'll need to insert the absolute path to the folder you wish to save the downloaded image files in (where it says `"<ABSOLUTE PATH TO FOLDER>"`).
+First, we'll download the images. To run this chunk of code, you'll need to insert the absolute path to the folder you wish to save the downloaded image files in (where it says `"<REPLACE WITH ABSOLUTE PATH TO FOLDER>"`).
 
 ```{r, eval=FALSE}
 #options(timeout=500) # if the images are taking a while to load, may want to change timeout length
@@ -708,12 +726,17 @@ for (i in image_urls){
   
   numbers <- 1:497
   
-  download.file(i, paste("<ABSOLUTE PATH TO FOLDER>", image_meta_data$prov_terr, "_RCMP_", image_meta_data$date_published, "_", numbers, ".jpg", sep = ""))
+  download.file(i, paste("<REPLACE WITH ABSOLUTE PATH TO FOLDER>", 
+                         image_meta_data$prov_terr, "_RCMP_", 
+                         image_meta_data$date_published, "_", 
+                         numbers, ".jpg", sep = ""))
   
 }
 ```
 
-Next, we'll download the text files for each news release. Using library(dplyr)'s `mutate()` function, we're going to add some formatting to our text files so that it's just not a giant blob of text in each one. (Same as the previous chunk of code, you'll need to insert the absolute path to the folder you wish to save the downloaded text files in, this time in the `setwd()` function.)
+Next, we'll download the text files for each news release. Using the `mutate()` function from library(dplyr), we'll add some formatting to our text files so that it's just not a giant blob of text in each one. 
+
+(Same as the previous chunk of code, you'll need to insert the absolute path to the folder you wish to save the downloaded text files in, this time in the `setwd()` function.)
 
 ```{r, eval=FALSE}
 subset_corpus <- rcmp_news %>% 
@@ -752,11 +775,11 @@ subset_corpus %>%
 
 ![Example text file and image in the folder](images/download_results2.png)
 
-# Step 5: Analyzing
+## Step 5: Analyzing
 
 How one analyzes their data will depend on the research question. Our analysis is intended to demonstrate how computational methods can help to orient qualitative research and offers early-stage findings and connections that social researchers might build upon to produce research for publication. To analyze our sampled images, we used [NVivo](https://www.qsrinternational.com/nvivo-qualitative-data-analysis-software/home), a qualitative research software that facilitates inquiry by allowing researchers to organize content into "codes" or categories and take notes. We provide more detail on our qualitative, analytic approach in the article. 
 
-# Step 6: Findings & Next Steps
+## Step 6: Findings & Interpretation
 
 Our results and discussion of next steps in this illustrative study are available in the article. Below are some sample images of the top four most frequent codes from our analysis of RCMP news release imagery. 
 
@@ -802,8 +825,6 @@ qual_freqs %>%
 
 ![Identification example 2](images/identification/Manitoba_RCMP_2019-07-26_245.jpg)
 
-![Identification example 3](images/identification/New Brunswick_RCMP_2019-12-30_181.jpg)
-
 ### Code 2: Spoils of War
 
 ![Spoils of war example 1](images/spoils_of_war/Nova Scotia_RCMP_2020-08-06_70.jpg)
@@ -830,7 +851,7 @@ qual_freqs %>%
 
 # Acknowledgements
 
-Special thanks to...
+Special thanks to Jimmy Xing for 'test driving' this article supplement and providing user experience feedback.
 
 
 
